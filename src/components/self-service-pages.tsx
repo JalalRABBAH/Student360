@@ -1,0 +1,59 @@
+"use client";
+
+import { useState } from "react";
+import { LocalizedLink as Link } from "@/i18n/provider";
+import { Award, BookOpen, Check, HeartHandshake, MessageSquare, Plus, Send, Sparkles, Target, Trophy } from "lucide-react";
+import { ActionButton, InsightCard, MetricCard, MiniBars, PageHeader, ProgressBar, StatusBadge, TimelineItem } from "@/components/demo-ui";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { demoEvents, grade8BStudents } from "@/lib/demo-data";
+import { useI18n } from "@/i18n/provider";
+const demoStudents = grade8BStudents;
+
+export function ProgressPageDemo() {
+  const { t } = useI18n();
+  const student = demoStudents[0];
+  return <div className="space-y-6"><PageHeader title={t("My progress")} description={t("Your growth across multiple dimensions. One number never defines you.")} /><div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"><MetricCard label={t("Academic")} value={`${student.academic}%`} detail={t("Current term")} trend={4} icon={BookOpen} /><MetricCard label={t("Homework")} value={`${student.homework}%`} detail={t("Last 30 days")} trend={8} tone="sky" /><MetricCard label={t("Engagement")} value={`${student.engagement}%`} detail={t("Teacher observations")} trend={3} tone="amber" /><MetricCard label={t("Attendance")} value={`${student.attendance}%`} detail={t("Current term")} tone="violet" /></div><div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]"><Card className="p-5"><h2 className="font-bold">{t("Six-week form")}</h2><p className="text-xs text-slate-500">{t("Your dimensions move independently")}</p><div className="mt-6 grid gap-5 sm:grid-cols-2"><div><MiniBars values={[45, 52, 60, 66, 74, 84]} /><p className="mt-2 text-xs text-slate-500">{t("Homework consistency")}</p></div><div className="space-y-4"><ProgressBar label={t("Academic")} value={student.academic} /><ProgressBar label={t("Engagement")} value={student.engagement} tone="amber" /><ProgressBar label={t("Motivation")} value={student.motivation} tone="sky" /><ProgressBar label={t("Competencies")} value={81} /></div></div></Card><div className="space-y-4"><InsightCard positive title={t("You are building momentum")} reasons={[t("Homework consistency improved for three weeks"), t("Teachers noticed strong collaboration")]} /><InsightCard title={t("Next useful step")} reasons={[t("Keep using your planning checklist"), t("Ask for help early when algebra feels unclear")]} /></div></div></div>;
+}
+
+export function GoalsPageDemo() {
+  const { t } = useI18n();
+  const [goals, setGoals] = useState([["Complete all mathematics homework this week", 72, "ACTIVE"], ["Participate once in every science lesson", 60, "ACTIVE"], ["Use my planner every school day", 100, "ACHIEVED"]] as Array<[string, number, string]>);
+  const [draft, setDraft] = useState({ title: "", date: "", actions: "" });
+  const addGoal = () => {
+    if (!draft.title.trim()) return;
+    setGoals((current) => [[draft.title, 0, "ACTIVE"], ...current]);
+    setDraft({ title: "", date: "", actions: "" });
+  };
+  return <div className="space-y-6"><PageHeader title={t("Goals")} description={t("Small, practical goals owned by students and supported by adults.")} actions={<ActionButton label={t("New goal")} title={t("Create a goal")} confirmLabel={t("New goal")} onConfirm={addGoal}><div className="space-y-3"><input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} className="h-10 w-full rounded-xl border px-3 dark:bg-slate-900" placeholder={t("What do you want to achieve?")} /><input value={draft.date} onChange={(event) => setDraft({ ...draft, date: event.target.value })} className="h-10 w-full rounded-xl border px-3 dark:bg-slate-900" placeholder={t("Target date")} /><textarea value={draft.actions} onChange={(event) => setDraft({ ...draft, actions: event.target.value })} className="min-h-20 w-full rounded-xl border p-3 dark:bg-slate-900" placeholder={t("Helpful actions")} /></div></ActionButton>} /><div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{goals.map((goal, index) => <Card key={goal[0]} className="p-5"><div className="flex justify-between"><div className="rounded-xl bg-primary-50 p-2.5 text-primary-600 dark:bg-primary-500/10"><Target className="h-5 w-5" /></div><StatusBadge tone={goal[2] === "ACHIEVED" ? "positive" : "info"}>{goal[2] === "ACHIEVED" ? t("Achieved") : t("Active")}</StatusBadge></div><h2 className="mt-4 min-h-12 font-bold">{goal[0]}</h2><p className="text-xs text-slate-500">{t("Owner: Student + teacher · Target this week")}</p><div className="mt-5"><ProgressBar label={t("Progress")} value={goal[1]} /></div><Button className="mt-4 w-full" variant={goal[2] === "ACHIEVED" ? "secondary" : "outline"} onClick={() => setGoals((current) => current.map((item, itemIndex) => itemIndex === index ? [item[0], 100, "ACHIEVED"] : item))}>{goal[2] === "ACHIEVED" ? <><Check className="mr-2 h-4 w-4" />{t("Achieved")}</> : t("Add progress update")}</Button></Card>)}</div></div>;
+}
+
+export function FeedbackPageDemo() {
+  const { t } = useI18n();
+  const feedback = [
+    ["Mathematics", "Excellent reasoning during the algebra challenge today.", "Amina Martin", "Today", "POSITIVE"],
+    ["Science", "Your questions helped the whole group think more deeply.", "Yassine Alaoui", "Yesterday", "POSITIVE"],
+    ["French", "Use the paragraph checklist before submitting your next reflection.", "Salma El Amrani", "2 days ago", "SUPPORT"],
+    ["History", "Strong teamwork during the timeline activity.", "Leila Haddad", "4 days ago", "POSITIVE"],
+  ];
+  const [ack, setAck] = useState<number[]>([]);
+  return <div className="space-y-6"><PageHeader title={t("Feedback")} description={t("Encouragement, useful next steps and teacher comments in one place.")} /><div className="grid gap-4 sm:grid-cols-3"><MetricCard label={t("Feedback this month")} value={12} detail={t("From 6 teachers")} icon={MessageSquare} /><MetricCard label={t("Positive highlights")} value={9} detail={t("Strengths worth recognising")} icon={Sparkles} tone="sky" /><MetricCard label={t("Helpful next steps")} value={3} detail={t("Actionable and supportive")} icon={HeartHandshake} tone="amber" /></div><div className="grid gap-4 lg:grid-cols-2">{feedback.map((item, index) => <Card key={item[0]} className="p-5"><div className="flex justify-between"><StatusBadge tone={item[4] === "POSITIVE" ? "positive" : "watch"}>{t(item[0])}</StatusBadge><span className="text-xs text-slate-400">{t(item[3])}</span></div><p className="mt-4 text-sm leading-6">{t(item[1])}</p><div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-xs dark:border-slate-800"><span className="text-slate-500">{item[2]}</span><button onClick={() => setAck((current) => current.includes(index) ? current : [...current, index])} className="font-semibold text-primary-600">{ack.includes(index) ? `${t("Acknowledged")} ✓` : t("Acknowledge")}</button></div></Card>)}</div></div>;
+}
+
+export function AchievementsPageDemo() {
+  const { t } = useI18n();
+  const achievements = [["Collaboration champion", "GOLD", "Helped the whole group succeed"], ["Homework streak", "SILVER", "Completed every assignment this week"], ["Positive momentum", "SILVER", "Improved across several dimensions"], ["Perfect attendance week", "BRONZE", "Present and on time every day"], ["Curious thinker", "GOLD", "Asked thoughtful questions in science"], ["Goal achieved", "SILVER", "Used the planner consistently"]];
+  const medalLabel: Record<string, string> = { GOLD: "Gold", SILVER: "Silver", BRONZE: "Bronze" };
+  return <div className="space-y-6"><PageHeader title={t("Achievements")} description={t("Celebrate progress, effort, competencies and meaningful milestones.")} /><div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{achievements.map((item, index) => <Card key={item[0]} className="overflow-hidden"><div className={`grid h-32 place-items-center ${index % 3 === 0 ? "bg-gradient-to-br from-amber-300 to-orange-500" : index % 3 === 1 ? "bg-gradient-to-br from-slate-300 to-slate-500" : "bg-gradient-to-br from-emerald-300 to-teal-600"}`}><Trophy className="h-12 w-12 text-white drop-shadow" /></div><div className="p-5"><div className="flex justify-between"><h2 className="font-bold">{t(item[0])}</h2><StatusBadge tone="positive">{t(medalLabel[item[1]])}</StatusBadge></div><p className="mt-2 text-sm text-slate-500">{t(item[2])}</p><p className="mt-4 text-xs text-slate-400">{t("Awarded this term · Visible to student and family")}</p></div></Card>)}</div></div>;
+}
+
+export function HelpPageDemo() {
+  const { t } = useI18n();
+  const [sent, setSent] = useState(false);
+  const [confidential, setConfidential] = useState(true);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [note, setNote] = useState("");
+  const toggle = (option: string) => setSelected((current) => current.includes(option) ? current.filter((item) => item !== option) : [...current, option]);
+  const options = ["Understanding a lesson", "Homework planning", "Talking to a teacher", "Something with classmates", "Feeling overwhelmed", "Something else"];
+  return <div className="space-y-6"><PageHeader title={t("Ask for help")} description={t("Reaching out is a strength. Tell the right adult what would help today.")} /><div className="grid gap-6 lg:grid-cols-[1.2fr_1fr]"><Card className="p-6">{sent ? <div className="grid min-h-96 place-items-center text-center"><div><div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Check className="h-6 w-6" /></div><h2 className="mt-4 text-xl font-bold">{t("Your request was sent")}</h2><p className="mt-2 max-w-md text-sm text-slate-500">{t("A trusted member of staff will review it. If you feel unsafe or need immediate help, speak directly to an adult nearby.")}</p><Button className="mt-5" onClick={() => { setSent(false); setSelected([]); setNote(""); }}>{t("Send another request")}</Button></div></div> : <><h2 className="text-lg font-bold">{t("What would help you today?")}</h2><div className="mt-5 grid gap-2 sm:grid-cols-2">{options.map((option) => <label key={option} className={`flex items-center gap-2 rounded-xl border p-3 text-sm dark:border-slate-800 ${selected.includes(option) ? "border-primary-400 bg-primary-50/60 dark:bg-primary-500/5" : "border-slate-200"}`}><input type="checkbox" checked={selected.includes(option)} onChange={() => toggle(option)} />{t(option)}</label>)}</div><textarea value={note} onChange={(event) => setNote(event.target.value)} className="mt-4 min-h-32 w-full rounded-xl border border-slate-200 p-3 dark:border-slate-800 dark:bg-slate-900" placeholder={t("You can explain in your own words…")} /><label className="mt-4 flex items-start gap-3 rounded-xl bg-slate-50 p-4 dark:bg-slate-900"><input type="checkbox" checked={confidential} onChange={(event) => setConfidential(event.target.checked)} /><span><span className="block text-sm font-semibold">{t("Confidential request")}</span><span className="text-xs text-slate-500">{t("Only the school support team will see the details.")}</span></span></label><Button className="mt-5 w-full" disabled={selected.length === 0} onClick={() => setSent(true)}><Send className="mr-2 h-4 w-4" />{t("Send help request")}</Button></>}</Card><div className="space-y-4"><InsightCard positive title={t("You are in control")} reasons={[t("Choose what you want to share"), t("You can ask for a specific adult"), t("The system never diagnoses or punishes you")]} /><Card className="p-5"><h2 className="font-bold">{t("Recent support")}</h2><div className="mt-4">{demoEvents.filter((event) => event.type === "HELP").map((event) => <TimelineItem key={event.time} {...event} />)}<TimelineItem time={t("Last week")} title="Planning support completed" description="Your teacher shared a simple homework checklist." tone="positive" /></div></Card></div></div></div>;
+}

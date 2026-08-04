@@ -1,0 +1,1332 @@
+// ---------------------------------------------------------------------------
+// STUDENT360 — Student Success Intelligence Platform
+// Prisma schema
+//
+// Multi-tenant (multi-school) relational model.
+//
+// DEV  : SQLite  — zero external services, runs everywhere.
+// PROD : switch `provider` to "postgresql" and point DATABASE_URL at your
+//        Postgres / Supabase instance. The schema deliberately avoids
+//        SQLite-incompatible constructs (native enums, scalar lists) so the
+//        very same schema migrates to Postgres without edits. Enum-like
+//        columns are validated in the application layer through the shared
+//        constants in `src/lib/domain/enums.ts`.
+// ---------------------------------------------------------------------------
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// TENANT / ORGANISATION
+// ===========================================================================
+
+model School {
+  id        String  @id @default(cuid())
+  name      String
+  slug      String  @unique
+  legalName String?
+  country   String  @default("MA")
+  city      String?
+  address   String?
+  phone     String?
+  email     String?
+  website   String?
+
+  // Branding
+  logoUrl        String?
+  primaryColor   String  @default("#16a34a")
+  accentColor    String  @default("#f59e0b")
+  defaultLocale  String  @default("en")
+  supportedLocales String @default("en,fr,ar")
+  timezone       String  @default("Africa/Casablanca")
+
+  // SaaS
+  plan       String   @default("PRO") // TRIAL | PRO | ENTERPRISE
+  status     String   @default("ACTIVE") // ACTIVE | SUSPENDED | ARCHIVED
+  seatsLimit Int      @default(2000)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campuses      Campus[]
+  academicYears AcademicYear[]
+  subjects      Subject[]
+  classes       SchoolClass[]
+  users         User[]
+  students      Student[]
+  teachers      Teacher[]
+  guardians     Guardian[]
+  competencies  Competency[]
+  configs       SchoolConfig[]
+  alerts        Alert[]
+  auditLogs     AuditLog[]
+  documents     Document[]
+  consents      Consent[]
+  events        ActivityEvent[]
+  messages      MessageThread[]
+  homework      Homework[]
+  assessments   Assessment[]
+  medicalRecords MedicalRecord[]
+  dailyRatings   DailyRating[]
+  disciplineRecords DisciplineRecord[]
+  pickupPeople   PickupPerson[]
+  learningPlans  LearningPlan[]
+  meetings       Meeting[]
+
+  @@index([status])
+}
+
+model Campus {
+  id       String @id @default(cuid())
+  schoolId String
+  name     String
+  address  String?
+  isMain   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  classes SchoolClass[]
+
+  @@index([schoolId])
+}
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  schoolId  String
+  name      String // "2025-2026"
+  startDate DateTime
+  endDate   DateTime
+  isCurrent Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school      School        @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  terms       Term[]
+  classes     SchoolClass[]
+  enrollments Enrollment[]
+
+  @@unique([schoolId, name])
+  @@index([schoolId, isCurrent])
+}
+
+model Term {
+  id             String   @id @default(cuid())
+  academicYearId String
+  name           String // "Term 1"
+  sequence       Int      @default(1)
+  startDate      DateTime
+  endDate        DateTime
+  isCurrent      Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  assessments  Assessment[]
+  competencies StudentCompetency[]
+
+  @@index([academicYearId, isCurrent])
+}
+
+model Subject {
+  id       String  @id @default(cuid())
+  schoolId String
+  name     String
+  code     String
+  color    String  @default("#3b82f6")
+  icon     String?
+  order    Int     @default(0)
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school       School                    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  assignments  TeacherClassAssignment[]
+  homework     Homework[]
+  assessments  Assessment[]
+  attendance   AttendanceRecord[]
+  observations TeacherObservation[]
+  slots        TimetableSlot[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId])
+}
+
+model SchoolClass {
+  id             String  @id @default(cuid())
+  schoolId       String
+  campusId       String?
+  academicYearId String
+  name           String // "8B"
+  gradeLevel     String // "Grade 8"
+  gradeOrder     Int     @default(0)
+  section        String? // "B"
+  room           String?
+  capacity       Int     @default(30)
+  isDemo         Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  campus       Campus?      @relation(fields: [campusId], references: [id])
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  enrollments  Enrollment[]
+  assignments  TeacherClassAssignment[]
+  students     Student[]
+  homework     Homework[]
+  assessments  Assessment[]
+  attendance   AttendanceRecord[]
+  observations TeacherObservation[]
+  slots        TimetableSlot[]
+  events       ActivityEvent[]
+
+  @@unique([academicYearId, name])
+  @@index([schoolId, gradeOrder])
+}
+
+// ===========================================================================
+// IDENTITY / RBAC
+// ===========================================================================
+
+model User {
+  id           String  @id @default(cuid())
+  schoolId     String? // null for SUPER_ADMIN
+  email        String  @unique
+  passwordHash String
+  firstName    String
+  lastName     String
+  avatarUrl    String?
+  phone        String?
+  locale       String  @default("en")
+  theme        String  @default("dark") // dark | light | system
+  isActive     Boolean @default(true)
+  mustReset    Boolean @default(false)
+  lastLoginAt  DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  roles         UserRole[]
+  student       Student?
+  teacher       Teacher?
+  guardian      Guardian?
+  notifications Notification[]
+  sessions      Session[]
+
+  sentMessages      Message[]           @relation("MessageSender")
+  messageRecipients MessageRecipient[]
+  threadMembers     ThreadParticipant[]
+  auditLogs         AuditLog[]
+  eventsActed       ActivityEvent[]     @relation("EventActor")
+
+  @@index([schoolId])
+  @@index([email])
+}
+
+model Role {
+  code        String @id // STUDENT | TEACHER | PARENT | ADMIN | PRINCIPAL | SUPER_ADMIN
+  name        String
+  description String?
+  rank        Int    @default(0)
+
+  users UserRole[]
+}
+
+model UserRole {
+  id       String  @id @default(cuid())
+  userId   String
+  roleCode String
+  schoolId String?
+  scope    String? // optional scope: gradeLevel, campus id...
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleCode], references: [code], onDelete: Cascade)
+
+  @@unique([userId, roleCode])
+  @@index([roleCode])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ===========================================================================
+// PEOPLE
+// ===========================================================================
+
+model Student {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  schoolId      String
+  studentNumber String
+  dateOfBirth   DateTime?
+  gender        String? // F | M | OTHER | UNDISCLOSED
+  photoUrl      String?
+  currentClassId String?
+  advisorTeacherId String?
+  enrolledAt    DateTime  @default(now())
+  status        String    @default("ACTIVE") // ACTIVE | INACTIVE | GRADUATED | TRANSFERRED
+  emergencyContact String?
+  notes         String?
+
+  // ---- Phase 1 — enriched student file (identity & logistics) ----
+  nationality    String? // e.g. "MA" | "FR"
+  birthplace     String? // e.g. "Casablanca"
+  address        String?
+  regime         String   @default("EXTERN") // EXTERN | HALF_BOARD | BOARDER
+  transportMode  String? // BUS | WALK | CAR | OTHER
+  busLine        String?
+  previousSchool String?
+  transferReason String?
+  homeLanguage   String? // "fr" | "ar" | "en" ...
+  languagesSpoken String? // comma separated list
+  aeshName       String? // supporting staff (AESH / auxiliary)
+  aeshSchedule   String?
+  // ----------------------------------------------------------------
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school       School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  currentClass SchoolClass? @relation(fields: [currentClassId], references: [id])
+  advisor      Teacher?     @relation("AdvisorStudents", fields: [advisorTeacherId], references: [id])
+
+  enrollments   Enrollment[]
+  guardians     ParentStudentRelationship[]
+  checkIns      DailyCheckIn[]
+  moodEntries   MoodEntry[]
+  attendance    AttendanceRecord[]
+  submissions   HomeworkSubmission[]
+  grades        Grade[]
+  competencies  StudentCompetency[]
+  observations  TeacherObservation[]
+  goals         StudentGoal[]
+  interventions Intervention[]
+  achievements  Achievement[]
+  parentInputs  ParentInput[]
+  alerts        Alert[]
+  documents     Document[]
+  consents      Consent[]
+  events        ActivityEvent[]
+  threads       MessageThread[]
+  indicators    StudentIndicatorSnapshot[]
+
+  // ---- Phase 1 — enriched student file relations ----
+  medicalRecord MedicalRecord?
+  ratings       DailyRating[]
+  discipline    DisciplineRecord[]
+  pickupPeople  PickupPerson[]
+  plans         LearningPlan[]
+  meetings      Meeting[]
+  // ---------------------------------------------------
+
+  @@unique([schoolId, studentNumber])
+  @@index([schoolId, status])
+  @@index([currentClassId])
+}
+
+model Teacher {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  schoolId       String
+  employeeNumber String
+  title          String  @default("Mr.") // Mr. | Mrs. | Ms. | Dr.
+  specialties    String? // comma separated subject codes
+  isHomeroom     Boolean @default(false)
+  status         String  @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  assignments     TeacherClassAssignment[]
+  observations    TeacherObservation[]
+  advisedStudents Student[]                @relation("AdvisorStudents")
+  slots           TimetableSlot[]
+
+  @@unique([schoolId, employeeNumber])
+  @@index([schoolId])
+}
+
+model Guardian {
+  id           String  @id @default(cuid())
+  userId       String  @unique
+  schoolId     String
+  occupation   String?
+  preferredContact String @default("EMAIL") // EMAIL | PHONE | APP
+  status       String  @default("ACTIVE")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  children ParentStudentRelationship[]
+  inputs   ParentInput[]
+  consents Consent[]
+
+  @@index([schoolId])
+}
+
+model ParentStudentRelationship {
+  id         String  @id @default(cuid())
+  guardianId String
+  studentId  String
+  relationship String @default("PARENT") // PARENT | MOTHER | FATHER | GUARDIAN | TUTOR | OTHER
+  isPrimary  Boolean @default(false)
+
+  // Fine-grained parent visibility (privacy by design)
+  canViewAcademics  Boolean @default(true)
+  canViewAttendance Boolean @default(true)
+  canViewWellbeing  Boolean @default(true)
+  canViewObservations Boolean @default(true)
+  receivesNotifications Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+}
+
+model TeacherClassAssignment {
+  id        String  @id @default(cuid())
+  teacherId String
+  classId   String
+  subjectId String?
+  isHomeroom Boolean @default(false)
+  role      String  @default("SUBJECT_TEACHER") // SUBJECT_TEACHER | HOMEROOM | SUPPORT | ADVISOR
+
+  createdAt DateTime @default(now())
+
+  teacher Teacher     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class   SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject?    @relation(fields: [subjectId], references: [id])
+
+  @@unique([teacherId, classId, subjectId])
+  @@index([classId])
+}
+
+model Enrollment {
+  id             String    @id @default(cuid())
+  studentId      String
+  classId        String
+  academicYearId String
+  status         String    @default("ACTIVE") // ACTIVE | LEFT | COMPLETED
+  joinedAt       DateTime  @default(now())
+  leftAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class        SchoolClass  @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, classId, academicYearId])
+  @@index([classId, status])
+}
+
+model TimetableSlot {
+  id        String @id @default(cuid())
+  classId   String
+  subjectId String
+  teacherId String?
+  dayOfWeek Int // 1 = Monday ... 7 = Sunday
+  startTime String // "08:00"
+  endTime   String // "09:00"
+  room      String?
+
+  createdAt DateTime @default(now())
+
+  class   SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher Teacher?    @relation(fields: [teacherId], references: [id])
+
+  @@index([classId, dayOfWeek])
+}
+
+// ===========================================================================
+// STUDENT-GENERATED SIGNALS (wellbeing / self report)
+// ===========================================================================
+
+model DailyCheckIn {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+  date      DateTime // normalised to 00:00 local
+
+  mood          Int // 1..5  (1 very difficult -> 5 great)
+  energy        Int // 1..5
+  motivation    Int // 1..5
+  stress        Int // 1..5 (perceived workload/stress)
+  understanding Int // 1..5
+
+  homeworkStatus String // DONE | PARTIAL | NOT_DONE | NEED_HELP
+  needsHelp      Boolean @default(false)
+  helpTopic      String?
+  helpMessage    String?
+  supportOptions String? // JSON array of predefined "what would help" options
+  note           String?
+
+  visibility String @default("SCHOOL_STAFF") // STUDENT_ONLY | TEACHER_ONLY | SCHOOL_STAFF | INCLUDING_PARENTS
+  source     String @default("STUDENT_APP")
+  status     String @default("SUBMITTED")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([schoolId, date])
+  @@index([studentId, date])
+}
+
+model MoodEntry {
+  id         String   @id @default(cuid())
+  schoolId   String
+  studentId  String
+  recordedAt DateTime @default(now())
+  mood       Int
+  energy     Int?
+  context    String? // BEFORE_CLASS | AFTER_ASSESSMENT | END_OF_DAY | FREE
+  note       String?
+  visibility String   @default("SCHOOL_STAFF")
+  source     String   @default("STUDENT_APP")
+
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, recordedAt])
+}
+
+// ===========================================================================
+// ATTENDANCE
+// ===========================================================================
+
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+  classId   String
+  subjectId String?
+  date      DateTime
+  period    String? // "P1".."P8" or null for daily
+  status    String // PRESENT | ABSENT | LATE | EXCUSED
+  minutesLate Int    @default(0)
+  reason    String?
+  justified Boolean  @default(false)
+  recordedById String?
+  source    String   @default("TEACHER")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject?    @relation(fields: [subjectId], references: [id])
+
+  @@unique([studentId, date, period])
+  @@index([classId, date])
+  @@index([studentId, date])
+  @@index([schoolId, date])
+}
+
+// ===========================================================================
+// HOMEWORK
+// ===========================================================================
+
+model Homework {
+  id          String   @id @default(cuid())
+  schoolId    String
+  classId     String
+  subjectId   String
+  title       String
+  description String?
+  assignedDate DateTime
+  dueDate     DateTime
+  estimatedMinutes Int  @default(30)
+  createdById String?
+  status      String   @default("PUBLISHED") // DRAFT | PUBLISHED | CLOSED
+  weight      Int      @default(1)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school      School               @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class       SchoolClass          @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject     Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  submissions HomeworkSubmission[]
+
+  @@index([classId, dueDate])
+  @@index([schoolId, dueDate])
+}
+
+model HomeworkSubmission {
+  id         String    @id @default(cuid())
+  schoolId   String
+  homeworkId String
+  studentId  String
+  status     String    @default("PENDING") // PENDING | COMPLETED | PARTIAL | NOT_DONE | LATE | MISSING | NEED_HELP
+  submittedAt DateTime?
+  minutesSpent Int?
+  qualityScore Int? // 0..100
+  studentNote String?
+  teacherFeedback String?
+  feedbackById String?
+  feedbackAt DateTime?
+  source     String    @default("STUDENT_APP")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  homework Homework @relation(fields: [homeworkId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([homeworkId, studentId])
+  @@index([studentId, status])
+  @@index([schoolId, createdAt])
+}
+
+// ===========================================================================
+// ACADEMICS
+// ===========================================================================
+
+model Assessment {
+  id        String   @id @default(cuid())
+  schoolId  String
+  classId   String
+  subjectId String
+  termId    String?
+  title     String
+  type      String   @default("QUIZ") // QUIZ | TEST | EXAM | PROJECT | ORAL | HOMEWORK | CONTINUOUS
+  date      DateTime
+  maxScore  Float    @default(20)
+  weight    Float    @default(1)
+  gradingSystem String @default("NUMERIC_20") // NUMERIC_20 | NUMERIC_100 | LETTER | COMPETENCY_4
+  createdById String?
+  status    String   @default("PUBLISHED")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class   SchoolClass @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject     @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  term    Term?       @relation(fields: [termId], references: [id])
+  grades  Grade[]
+
+  @@index([classId, date])
+  @@index([subjectId, date])
+}
+
+model Grade {
+  id           String  @id @default(cuid())
+  schoolId     String
+  assessmentId String
+  studentId    String
+  score        Float?
+  percentage   Float?
+  letter       String?
+  level        Int? // competency level 0..4
+  comment      String?
+  isAbsent     Boolean @default(false)
+  gradedById   String?
+  gradedAt     DateTime @default(now())
+  visibility   String   @default("INCLUDING_PARENTS")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assessment Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assessmentId, studentId])
+  @@index([studentId, gradedAt])
+}
+
+// ===========================================================================
+// COMPETENCIES
+// ===========================================================================
+
+model Competency {
+  id          String  @id @default(cuid())
+  schoolId    String
+  framework   String  @default("CORE_SKILLS")
+  code        String
+  name        String
+  description String?
+  category    String  @default("TRANSVERSAL") // TRANSVERSAL | ACADEMIC | SOCIAL | DIGITAL
+  icon        String?
+  order       Int     @default(0)
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school   School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students StudentCompetency[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, framework])
+}
+
+model StudentCompetency {
+  id           String @id @default(cuid())
+  schoolId     String
+  studentId    String
+  competencyId String
+  termId       String?
+  level        Int    @default(0) // 0 emerging .. 4 mastered
+  score        Int    @default(0) // 0..100 derived
+  evidenceCount Int   @default(0)
+  trend        String @default("STABLE") // UP | DOWN | STABLE
+  comment      String?
+  assessedById String?
+  assessedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student    Student    @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  competency Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  term       Term?      @relation(fields: [termId], references: [id])
+
+  @@unique([studentId, competencyId, termId])
+  @@index([studentId])
+}
+
+// ===========================================================================
+// TEACHER OBSERVATIONS
+// ===========================================================================
+
+model TeacherObservation {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+  teacherId String
+  classId   String?
+  subjectId String?
+
+  category  String // PARTICIPATION | ENGAGEMENT | EFFORT | COLLABORATION | AUTONOMY | UNDERSTANDING | MASTERY | IMPROVEMENT | BEHAVIOR | DIFFICULTY | SUPPORT_NEEDED
+  sentiment String   @default("NEUTRAL") // POSITIVE | NEUTRAL | ATTENTION
+  value     Int? // 1..5 rating when applicable
+  delta     Int? // -1 / +1 quick input
+  note      String?
+  followUpAction String?
+  followUpDue DateTime?
+  isQuickInput Boolean @default(false)
+  visibility String  @default("SCHOOL_STAFF") // TEACHER_ONLY | SCHOOL_STAFF | INCLUDING_PARENTS | INCLUDING_STUDENT
+  source    String   @default("TEACHER_APP")
+  status    String   @default("ACTIVE")
+  occurredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  teacher Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class   SchoolClass? @relation(fields: [classId], references: [id])
+  subject Subject?     @relation(fields: [subjectId], references: [id])
+
+  @@index([studentId, occurredAt])
+  @@index([classId, occurredAt])
+  @@index([schoolId, occurredAt])
+}
+
+// ===========================================================================
+// GOALS / INTERVENTIONS / ACHIEVEMENTS
+// ===========================================================================
+
+model StudentGoal {
+  id          String   @id @default(cuid())
+  schoolId    String
+  studentId   String
+  title       String
+  description String?
+  ownerType   String   @default("SHARED") // STUDENT | TEACHER | SHARED
+  createdById String?
+  category    String   @default("ACADEMIC") // ACADEMIC | HOMEWORK | ORGANISATION | WELLBEING | BEHAVIOUR | COMPETENCY
+  startDate   DateTime @default(now())
+  targetDate  DateTime
+  progress    Int      @default(0) // 0..100
+  status      String   @default("ACTIVE") // ACTIVE | ACHIEVED | PAUSED | CANCELLED | MISSED
+  metric      String?
+  visibility  String   @default("SCHOOL_STAFF")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  updates GoalUpdate[]
+
+  @@index([studentId, status])
+}
+
+model GoalUpdate {
+  id          String   @id @default(cuid())
+  goalId      String
+  progress    Int
+  note        String?
+  createdById String?
+  createdByRole String @default("TEACHER")
+  createdAt   DateTime @default(now())
+
+  goal StudentGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, createdAt])
+}
+
+model Intervention {
+  id        String @id @default(cuid())
+  schoolId  String
+  studentId String
+  title     String
+  issue     String
+  action    String
+  responsible String // free text: "Teacher + parent"
+  frequency String  @default("WEEKLY") // DAILY | WEEKLY | BIWEEKLY | MONTHLY | ONE_OFF
+  startDate DateTime @default(now())
+  endDate   DateTime
+  successIndicator String
+  baselineValue Float?
+  targetValue   Float?
+  currentValue  Float?
+  status    String  @default("ACTIVE") // PLANNED | ACTIVE | COMPLETED | CANCELLED
+  outcome   String? // IMPROVED | STABLE | NO_CHANGE | DECLINED
+  createdById String?
+  visibility String @default("SCHOOL_STAFF")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student Student              @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  updates InterventionUpdate[]
+
+  @@index([studentId, status])
+  @@index([schoolId, status])
+}
+
+model InterventionUpdate {
+  id             String   @id @default(cuid())
+  interventionId String
+  note           String
+  measuredValue  Float?
+  createdById    String?
+  createdAt      DateTime @default(now())
+
+  intervention Intervention @relation(fields: [interventionId], references: [id], onDelete: Cascade)
+
+  @@index([interventionId, createdAt])
+}
+
+model Achievement {
+  id          String   @id @default(cuid())
+  schoolId    String
+  studentId   String
+  title       String
+  description String?
+  category    String   @default("PROGRESS") // PROGRESS | COMPETENCY | EFFORT | COLLABORATION | ATTENDANCE | ACADEMIC | MILESTONE
+  icon        String   @default("trophy")
+  level       String   @default("BRONZE") // BRONZE | SILVER | GOLD
+  awardedById String?
+  awardedAt   DateTime @default(now())
+  visibility  String   @default("INCLUDING_PARENTS")
+
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, awardedAt])
+}
+
+// ===========================================================================
+// COMMUNICATION
+// ===========================================================================
+
+model MessageThread {
+  id        String  @id @default(cuid())
+  schoolId  String
+  subject   String
+  aboutStudentId String?
+  category  String  @default("GENERAL") // GENERAL | ACADEMIC | WELLBEING | ATTENDANCE | HOMEWORK | ADMIN
+  lastMessageAt DateTime @default(now())
+  status    String  @default("OPEN") // OPEN | ARCHIVED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school       School              @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  aboutStudent Student?            @relation(fields: [aboutStudentId], references: [id])
+  messages     Message[]
+  participants ThreadParticipant[]
+
+  @@index([schoolId, lastMessageAt])
+}
+
+model ThreadParticipant {
+  id       String @id @default(cuid())
+  threadId String
+  userId   String
+  role     String @default("MEMBER")
+
+  createdAt DateTime @default(now())
+
+  thread MessageThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id       String   @id @default(cuid())
+  schoolId String
+  threadId String
+  senderId String
+  body     String
+  sentAt   DateTime @default(now())
+  visibility String @default("PARTICIPANTS")
+
+  createdAt DateTime @default(now())
+
+  thread     MessageThread      @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender     User               @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipients MessageRecipient[]
+
+  @@index([threadId, sentAt])
+}
+
+model MessageRecipient {
+  id        String    @id @default(cuid())
+  messageId String
+  userId    String
+  readAt    DateTime?
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([userId, readAt])
+}
+
+model ParentInput {
+  id         String   @id @default(cuid())
+  schoolId   String
+  guardianId String
+  studentId  String
+  type       String // HOMEWORK_SUPPORT | OBSERVATION | COMMENT | INFO_FOR_SCHOOL | ACKNOWLEDGEMENT | MESSAGE_TO_TEACHER
+  content    String
+  minutesSupported Int?
+  moodAtHome Int?
+  relatedHomeworkId String?
+  visibility String   @default("SCHOOL_STAFF")
+  status     String   @default("SUBMITTED") // SUBMITTED | REVIEWED | ACTIONED
+  reviewedById String?
+  reviewedAt DateTime?
+  occurredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, occurredAt])
+  @@index([schoolId, occurredAt])
+}
+
+// ===========================================================================
+// ANALYTICS / SIGNALS
+// ===========================================================================
+
+model Alert {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+  level     String // INFO | WATCH | ACTION_SUGGESTED
+  code      String // HOMEWORK_DECLINE | ATTENDANCE_DECLINE | LATENESS | PARTICIPATION_DROP | MOTIVATION_DROP | ACADEMIC_DROP | MULTIPLE_OBSERVATIONS | REPEATED_HELP_REQUESTS | COMBINED
+  title     String
+  summary   String
+  reasons   String // JSON array of { label, detail, metric, from, to }
+  signalCount Int    @default(1)
+  confidence String  @default("MEDIUM") // LOW | MEDIUM | HIGH
+  status    String   @default("OPEN") // OPEN | ACKNOWLEDGED | IN_PROGRESS | RESOLVED | DISMISSED
+  acknowledgedById String?
+  acknowledgedAt DateTime?
+  resolvedAt DateTime?
+  visibility String  @default("SCHOOL_STAFF")
+  detectedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId, status, level])
+  @@index([studentId, status])
+}
+
+model StudentIndicatorSnapshot {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+  periodStart DateTime
+  periodEnd DateTime
+  granularity String @default("WEEK") // DAY | WEEK | MONTH | TERM
+
+  academic   Float?
+  engagement Float?
+  homework   Float?
+  attendance Float?
+  motivation Float?
+  wellbeing  Float?
+  participation Float?
+  overallTrend String @default("STABLE") // UP | DOWN | STABLE
+
+  createdAt DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, periodStart, granularity])
+  @@index([schoolId, periodStart])
+}
+
+// Unified event stream — powers the student timeline and the school LIVE view.
+model ActivityEvent {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String?
+  classId   String?
+  actorId   String?
+  type      String // CHECK_IN | ATTENDANCE | HOMEWORK_SUBMITTED | HOMEWORK_ASSIGNED | OBSERVATION | GRADE | PARENT_INPUT | HELP_REQUEST | GOAL | INTERVENTION | ACHIEVEMENT | MESSAGE | ALERT
+  title     String
+  description String?
+  sentiment String   @default("NEUTRAL") // POSITIVE | NEUTRAL | ATTENTION
+  icon      String?
+  refType   String?
+  refId     String?
+  metadata  String? // JSON
+  visibility String  @default("SCHOOL_STAFF")
+  occurredAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+
+  school  School       @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student?     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  class   SchoolClass? @relation(fields: [classId], references: [id], onDelete: Cascade)
+  actor   User?        @relation("EventActor", fields: [actorId], references: [id])
+
+  @@index([schoolId, occurredAt])
+  @@index([studentId, occurredAt])
+  @@index([classId, occurredAt])
+}
+
+model Notification {
+  id       String    @id @default(cuid())
+  schoolId String?
+  userId   String
+  type     String // HOMEWORK_DUE | PARENT_MESSAGE | TEACHER_FEEDBACK | ATTENDANCE | HELP_REQUEST | GOAL_ACHIEVED | SUPPORT_DUE | WEEKLY_REPORT | ALERT
+  title    String
+  body     String?
+  linkUrl  String?
+  priority String    @default("NORMAL") // LOW | NORMAL | HIGH
+  readAt   DateTime?
+  studentId String?
+
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([userId, createdAt])
+}
+
+// ===========================================================================
+// DOCUMENTS / CONSENT / CONFIG / AUDIT
+// ===========================================================================
+
+model Document {
+  id         String  @id @default(cuid())
+  schoolId   String
+  studentId  String?
+  name       String
+  type       String  @default("OTHER") // REPORT | CERTIFICATE | MEDICAL | ADMIN | WORK_SAMPLE | OTHER
+  mimeType   String  @default("application/pdf")
+  sizeBytes  Int     @default(0)
+  url        String
+  uploadedById String?
+  visibility String  @default("SCHOOL_STAFF")
+  isSensitive Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student? @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@index([schoolId])
+}
+
+model Consent {
+  id         String    @id @default(cuid())
+  schoolId   String
+  studentId  String
+  guardianId String?
+  type       String // DATA_PROCESSING | WELLBEING_TRACKING | PHOTO_USE | EXTERNAL_SHARING | AI_ASSISTANCE | FIELD_TRIP | MEDICAL_EMERGENCY
+  granted    Boolean   @default(false)
+  grantedAt  DateTime?
+  expiresAt  DateTime?
+  revokedAt  DateTime?
+  notes      String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school   School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student  Student   @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  guardian Guardian? @relation(fields: [guardianId], references: [id])
+
+  @@unique([studentId, type, guardianId])
+  @@index([schoolId, type])
+}
+
+model SchoolConfig {
+  id       String @id @default(cuid())
+  schoolId String
+  key      String // GRADING_SYSTEM | ALERT_THRESHOLDS | CHECKIN_QUESTIONS | ATTENDANCE_TYPES | OBSERVATION_TYPES | PARENT_VISIBILITY | TEACHER_PERMISSIONS | BRANDING | LANGUAGES
+  value    String // JSON
+  updatedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolId, key])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  schoolId   String?
+  actorId    String?
+  actorRole  String?
+  action     String // LOGIN | VIEW_STUDENT | CREATE_OBSERVATION | UPDATE_ATTENDANCE | EXPORT_REPORT | ...
+  entityType String?
+  entityId   String?
+  studentId  String?
+  metadata   String? // JSON
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  actor  User?   @relation(fields: [actorId], references: [id])
+
+  @@index([schoolId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([studentId, createdAt])
+}
+
+// ===========================================================================
+// PHASE 1 — ENRICHED STUDENT FILE
+// ---------------------------------------------------------------------------
+// Medical, daily ratings, discipline & recognition, pickup persons,
+// learning plans (PAI / PAP / PPS / AESH) and parent meetings.
+// ===========================================================================
+
+model MedicalRecord {
+  id        String  @id @default(cuid())
+  schoolId  String
+  studentId String  @unique
+
+  bloodType   String? // A+ | A- | B+ | B- | AB+ | AB- | O+ | O- | UNKNOWN
+  allergies   String?
+  chronicDiseases String?
+  medications String?
+  treatingPhysician String?
+  physicianPhone String?
+  sportsRestrictions String?
+
+  // Practical emergency protocol — the ONLY part teachers may see
+  emergencyProtocol String
+  // Whether the emergency protocol may be surfaced to classroom teachers
+  emergencyProtocolVisibleToTeachers Boolean @default(true)
+
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([schoolId])
+}
+
+model DailyRating {
+  id           String   @id @default(cuid())
+  schoolId     String
+  studentId    String
+  date         DateTime // normalised 00:00 local
+
+  // Exception-based daily tracking: null = presumed OK / green (no entry).
+  // Each criterion is rated 1..5 (1 = red / significant issue, 5 = green).
+  punctuality   Int? // 1..5
+  participation Int?
+  classwork     Int?
+  homework      Int?
+  behavior      Int?
+  rules         Int?
+  concentration Int?
+  motivation    Int?
+  groupWork     Int?
+  autonomy      Int?
+  organisation  Int?
+
+  note         String?
+  recordedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, date])
+  @@index([schoolId, date])
+  @@index([studentId, date])
+}
+
+model DisciplineRecord {
+  id        String   @id @default(cuid())
+  schoolId  String
+  studentId String
+
+  // Encouragement spectrum too: COMMENDATION | HONOR_ROLL | ENCOURAGEMENT
+  // and sanction spectrum: WARNING | BLAME | EXCLUSION
+  type        String
+  severity    String   @default("MINOR") // MINOR | MAJOR
+  title       String
+  description String?
+  decidedById String?
+  decidedAt   DateTime @default(now())
+  visibleToParents Boolean @default(true)
+  status      String   @default("ACTIVE") // ACTIVE | CLOSED | EXPUNGED
+  closedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, decidedAt])
+  @@index([schoolId, decidedAt])
+}
+
+model PickupPerson {
+  id           String   @id @default(cuid())
+  schoolId     String
+  studentId    String
+  name         String
+  photoUrl     String?
+  idNumber     String? // national ID / passport
+  relationship String   @default("OTHER") // GRANDPARENT | BABYSITTER | SIBLING | AUNT | UNCLE | OTHER
+  phone        String?
+  isActive     Boolean  @default(true)
+  notes        String? // custody restrictions, e.g. shared custody
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, isActive])
+  @@index([schoolId])
+}
+
+model LearningPlan {
+  id             String   @id @default(cuid())
+  schoolId       String
+  studentId      String
+  type           String   @default("OTHER") // PAI | PAP | PPS | AESH | OTHER
+  title          String
+  description    String?
+  accommodations String? // JSON list of accommodation labels
+  startDate      DateTime
+  endDate        DateTime?
+  assignedTo     String? // AESH name when type = AESH
+  createdById    String?
+  status         String   @default("ACTIVE") // ACTIVE | COMPLETED | PAUSED | CANCELLED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, status])
+  @@index([schoolId, type])
+}
+
+model Meeting {
+  id           String   @id @default(cuid())
+  schoolId     String
+  studentId    String
+  title        String
+  date         DateTime
+  participants String? // free text list
+  agenda       String?
+  minutes      String?
+  decisions    String?
+  followUp     String?
+  createdById  String?
+  status       String   @default("SCHEDULED") // SCHEDULED | DONE | CANCELLED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, date])
+  @@index([schoolId, date])
+}

@@ -516,7 +516,8 @@ export async function getAssessments(session: SessionPayload): Promise<Assessmen
   const half = Math.ceil(graded.length / 2);
   const recent = graded.slice(0, half);
   const older = graded.slice(half);
-  const trend = recent.length && older.length ? round(avg(recent.map((i) => i.average!)) - avg(older.map((i) => i.average!)), 1) : null;
+  const avgOf = (list: typeof graded) => avg(list.flatMap((i) => (i.average === null ? [] : [i.average])));
+  const trend = recent.length && older.length ? round(avgOf(recent) - avgOf(older), 1) : null;
 
   return { subjects, items, metrics: { termCount: items.length, awaitingGrades, academicTrend: trend } };
 }

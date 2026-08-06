@@ -1,5 +1,9 @@
-import { PlatformDirectoryDemo } from "@/components/directory-pages";
+import { requireCapability } from "@/lib/auth/server";
+import { getPlatformOverview, listPlatformSchools } from "@/lib/platform/service";
+import { SchoolsPage } from "@/components/platform-directory-ui";
 
-export default function Page() {
-  return <PlatformDirectoryDemo type="schools" />;
+export default async function Page() {
+  const session = await requireCapability("tenant:manage");
+  const [schools, overview] = await Promise.all([listPlatformSchools(session, {}), getPlatformOverview()]);
+  return <SchoolsPage schools={schools} overview={overview} />;
 }

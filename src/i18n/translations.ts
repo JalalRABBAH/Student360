@@ -1045,3 +1045,25 @@ Object.assign(phrases, {
   "Visible to teachers": { fr: "Visible par les enseignants", ar: "مرئي للمعلمين" },
   "Visible to the school nurse and administration; teachers only see the emergency protocol.": { fr: "Visible par l’infirmière scolaire et l’administration ; les enseignants ne voient que le protocole d’urgence.", ar: "مرئي لممرضة المدرسة والإدارة؛ يرى المعلمون بروتوكول الطوارئ فقط." },
 });
+
+// platform-directory-ui.tsx — multi-tenant users & schools directories
+Object.assign(phrases, {
+  "Parent / Guardian": { fr: "Parent / tuteur", ar: "ولي الأمر" },
+  "School nurse": { fr: "Infirmière scolaire", ar: "ممرضة المدرسة" },
+  "School administration": { fr: "Administration scolaire", ar: "إدارة المدرسة" },
+  "School management": { fr: "Direction de l’école", ar: "إدارة المدرسة العليا" },
+  "Platform administrator": { fr: "Administrateur de la plateforme", ar: "مدير المنصة" },
+  "Inactive": { fr: "Inactif", ar: "غير نشط" },
+  "Archived": { fr: "Archivée", ar: "مؤرشفة" },
+  "Last login": { fr: "Dernière connexion", ar: "آخر تسجيل دخول" },
+  "City": { fr: "Ville", ar: "المدينة" },
+  "All accounts on the platform": { fr: "Tous les comptes de la plateforme", ar: "جميع حسابات المنصة" },
+  "Signed in within the last 30 days": { fr: "Connectés au cours des 30 derniers jours", ar: "سجّلوا الدخول خلال آخر 30 يومًا" },
+  "Tenants on the platform": { fr: "Établissements sur la plateforme", ar: "المؤسسات على المنصة" },
+  "Active student accounts": { fr: "Comptes élèves actifs", ar: "حسابات الطلاب النشطة" },
+  "Active schools": { fr: "Écoles actives", ar: "المدارس النشطة" },
+  "Active tenants": { fr: "Établissements actifs", ar: "المؤسسات النشطة" },
+  "Active teaching staff": { fr: "Enseignants actifs", ar: "الكادر التعليمي النشط" },
+  "No users match your search": { fr: "Aucun utilisateur ne correspond à votre recherche", ar: "لا يوجد مستخدمون يطابقون بحثك" },
+  "No schools match your search": { fr: "Aucune école ne correspond à votre recherche", ar: "لا توجد مدارس تطابق بحثك" },
+});

@@ -46,9 +46,10 @@ export async function POST(req: Request) {
   const maxAge = sessionMaxAge();
   const activeLocale = locale ?? user.locale;
 
-  if (locale && locale !== user.locale) {
-    await prisma.user.update({ where: { id: user.id }, data: { locale } });
-  }
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { locale: locale ?? user.locale, lastLoginAt: new Date() },
+  });
 
   const session = await prisma.session.create({
     data: {

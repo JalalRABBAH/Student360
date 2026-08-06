@@ -1,5 +1,9 @@
-import { DashboardDemo } from "@/components/dashboard-demo";
+import { requireSession } from "@/lib/auth/server";
+import { getDashboard } from "@/lib/dashboard/service";
+import { DashboardPage } from "@/components/dashboard-page";
 
-export default function DashboardPage() {
-  return <DashboardDemo />;
+export default async function Page() {
+  const session = await requireSession();
+  const data = await getDashboard(session);
+  return <DashboardPage data={data} />;
 }

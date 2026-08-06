@@ -234,6 +234,10 @@ function signalFor(snap: { academic: number; attendance: number; homework: numbe
   return "STABLE";
 }
 
+function trendValue(value: string | null | undefined): "UP" | "DOWN" | "STABLE" {
+  return value === "UP" || value === "DOWN" ? value : "STABLE";
+}
+
 function snapNumbers(snap: {
   academic: number | null;
   attendance: number | null;
@@ -365,7 +369,7 @@ export async function listStudents(
       engagement,
       motivation,
       wellbeing,
-      trend: snap?.overallTrend ?? "STABLE",
+      trend: trendValue(snap?.overallTrend),
       signal,
     };
   });
@@ -579,7 +583,7 @@ export async function getStudentProfile(session: SessionPayload, studentId: stri
   const overall = Math.round(
     (indicators.academic + indicators.engagement + indicators.homework + indicators.attendance + indicators.motivation + indicators.wellbeing) / 6,
   );
-  const trend: "UP" | "DOWN" | "STABLE" = latest?.overallTrend ?? "STABLE";
+  const trend = trendValue(latest?.overallTrend);
   const signal = latestValues ? signalFor(latestValues) : "STABLE";
 
   const recentForm = snapshots
@@ -986,7 +990,7 @@ export async function listChildren(session: SessionPayload): Promise<ChildCard[]
       homework,
       attendance,
       engagement,
-      trend: snap?.overallTrend ?? "STABLE",
+      trend: trendValue(snap?.overallTrend),
       signal: values ? signalFor(values) : "STABLE",
       presentToday: presentToday.has(student.id),
     };

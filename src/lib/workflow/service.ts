@@ -563,10 +563,10 @@ export async function getWeeklyReview(session: SessionPayload): Promise<WeeklyRe
 
   const [snaps, prevSnaps, checkInsWeek, checkInsPrev, alerts] = await Promise.all([
     ids.length
-      ? prisma.studentIndicatorSnapshot.findMany({ where: { studentId: { in: ids }, granularity: "WEEK", periodStart: { gte: weekStart } }, select: { studentId: true, academic: true, attendance: true, homework: true, engagement: true, motivation: true, wellbeing: true, overallTrend: true } })
+      ? prisma.studentIndicatorSnapshot.findMany({ where: { studentId: { in: ids }, granularity: "WEEK", periodStart: { gte: weekStart } }, select: { studentId: true, periodStart: true, academic: true, attendance: true, homework: true, engagement: true, motivation: true, wellbeing: true, overallTrend: true } })
       : Promise.resolve([]),
     ids.length
-      ? prisma.studentIndicatorSnapshot.findMany({ where: { studentId: { in: ids }, granularity: "WEEK", periodStart: { gte: prevWeekStart, lt: weekStart } }, select: { studentId: true, academic: true, attendance: true, homework: true, engagement: true, motivation: true, wellbeing: true, overallTrend: true } })
+      ? prisma.studentIndicatorSnapshot.findMany({ where: { studentId: { in: ids }, granularity: "WEEK", periodStart: { gte: prevWeekStart, lt: weekStart } }, select: { studentId: true, periodStart: true, academic: true, attendance: true, homework: true, engagement: true, motivation: true, wellbeing: true, overallTrend: true } })
       : Promise.resolve([]),
     ids.length ? prisma.dailyCheckIn.count({ where: { studentId: { in: ids }, date: { gte: weekStart } } }) : 0,
     ids.length ? prisma.dailyCheckIn.count({ where: { studentId: { in: ids }, date: { gte: prevWeekStart, lt: weekStart } } }) : 0,

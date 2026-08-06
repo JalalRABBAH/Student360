@@ -1,16 +1,17 @@
-import { StudentProfileDemo } from "@/components/student-profile-demo";
-import { demoStudents } from "@/lib/demo-data";
 import { requireSession } from "@/lib/auth/server";
-import { canAccessDemoStudent } from "@/lib/auth/rbac";
+import { getStudentProfile } from "@/lib/students/service";
+import { StudentProfilePage } from "@/components/student-profile-page";
 import { notFound, redirect } from "next/navigation";
 
 export default async function Page({ params }: { params: Promise<{ studentId: string }> }) {
   const { studentId } = await params;
-  const student = demoStudents.find((item) => item.id === studentId);
-  if (!student) notFound();
-
   const session = await requireSession();
-  if (!(await canAccessDemoStudent(session, student))) redirect("/forbidden");
-
-  return <StudentProfileDemo studentId={studentId} />;
+  let profile;
+  try {
+    profile = await getStudentProfile(session, studentId);
+  } catch (error) {
+    if (error instanceof Error && error.message === "STUDENT_ACCESS_DENIED") redirect("/forbidden");
+    notFound();
+  }
+  return <StudentProfilePage profile={profile} />;
 }

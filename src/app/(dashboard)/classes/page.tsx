@@ -1,5 +1,9 @@
-import { ClassesPageDemo } from "@/components/directory-pages";
+import { requireSession } from "@/lib/auth/server";
+import { listClasses } from "@/lib/students/service";
+import { ClassesPage } from "@/components/students-directory-ui";
 
-export default function Page() {
-  return <ClassesPageDemo />;
+export default async function Page() {
+  const session = await requireSession();
+  const classes = await listClasses(session);
+  return <ClassesPage classes={classes} />;
 }

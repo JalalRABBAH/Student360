@@ -469,7 +469,6 @@ const phrases: Record<string, TranslationPair> = {
   "A calm, practical overview of what matters today for your children.": { fr: "Une vue d’ensemble calme et pratique de ce qui compte aujourd’hui pour vos enfants.", ar: "نظرة عامة هادئة وعملية لما يهم أطفالك اليوم." },
   "Your day at a glance: check-in, homework, grades and goals.": { fr: "Votre journée en un coup d’œil : bilan, devoirs, notes et objectifs.", ar: "يومك في لمحة: التسجيل والواجبات والدرجات والأهداف." },
   "Platform overview across every school.": { fr: "Vue d’ensemble de la plateforme sur toutes les écoles.", ar: "نظرة عامة على المنصة عبر جميع المدارس." },
-  "How are you feeling today?": { fr: "Comment te sens-tu aujourd’hui ?", ar: "كيف تشعر اليوم؟" },
 };
 
 const replacements: Array<[RegExp, (locale: Locale, match: string, ...groups: string[]) => string | undefined]> = [

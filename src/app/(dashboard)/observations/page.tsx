@@ -1,5 +1,9 @@
-import { ObservationsPageDemo } from "@/components/workflow-pages";
+import { requireSession } from "@/lib/auth/server";
+import { getObservations } from "@/lib/workflow/service";
+import { ObservationsPage } from "@/components/workflow-ui";
 
-export default function Page() {
-  return <ObservationsPageDemo />;
+export default async function Page() {
+  const session = await requireSession();
+  const data = await getObservations(session);
+  return <ObservationsPage data={data} />;
 }

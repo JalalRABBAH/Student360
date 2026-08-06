@@ -1,5 +1,9 @@
-import { TodayPageDemo } from "@/components/workflow-pages";
+import { requireSession } from "@/lib/auth/server";
+import { getToday } from "@/lib/workflow/service";
+import { TodayPage } from "@/components/workflow-ui";
 
-export default function Page() {
-  return <TodayPageDemo />;
+export default async function Page() {
+  const session = await requireSession();
+  const data = await getToday(session);
+  return <TodayPage data={data} />;
 }

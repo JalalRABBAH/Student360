@@ -225,7 +225,7 @@ function EventRow({ event }: { event: LiveEvent }) {
 }
 
 export function LivePage({ data }: { data: LiveData }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [eventType, setEventType] = useState("All events");
   const [classId, setClassId] = useState<string>(data.pulses[0]?.id ?? "all");
   const selectedClass = data.pulses.find((c) => c.id === classId);

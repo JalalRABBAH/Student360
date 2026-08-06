@@ -84,7 +84,7 @@ export type TodayData = {
 
 const DAY_MAP: Record<number, number> = { 0: 7, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6 };
 
-async function timetableFor(classIds: Scope, today: Date, schoolId?: string): Promise<Prisma.TimetableSlotGetPayload<{ include: { subject: true; class: true } }>[]> {
+async function timetableFor(classIds: Scope, today: Date, schoolId?: string) {
   return prisma.timetableSlot.findMany({
     where: { ...(schoolId ? { class: { schoolId } } : {}), ...(classIds === "ALL" ? {} : { classId: { in: classIds } }), dayOfWeek: DAY_MAP[today.getDay()] },
     include: { subject: true, class: { select: { id: true, name: true, room: true } } },

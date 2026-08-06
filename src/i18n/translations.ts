@@ -477,6 +477,8 @@ const replacements: Array<[RegExp, (locale: Locale, match: string, ...groups: st
   [/^(\d+) students$/, (locale, _match, count) => locale === "fr" ? `${count} élèves` : `${count} طالبًا`],
   [/^(\d+) participants$/, (locale, _match, count) => locale === "fr" ? `${count} participants` : `${count} مشاركًا`],
   [/^Grade ([789])([AB])$/, (locale, _match, grade, section) => locale === "fr" ? `${grade}e ${section}` : `الصف ${grade === "7" ? "السابع" : grade === "8" ? "الثامن" : "التاسع"} ${section === "A" ? "أ" : "ب"}`],
+  [/^(\d+) students show combined weak signals$/, (locale, _match, count) => locale === "fr" ? `${count} élèves présentent des signaux faibles combinés` : `${count} طلاب يظهرون إشارات ضعيفة مجتمعة`],
+  [/^(\d+) students progressing in several dimensions$/, (locale, _match, count) => locale === "fr" ? `${count} élèves progressent dans plusieurs dimensions` : `${count} طلاب يتقدمون في عدة أبعاد`],
 ];
 
 export function translateText(text: string, locale: Locale) {
@@ -1250,3 +1252,94 @@ phrases["Current academic year"] = { fr: "Année scolaire en cours", ar: "الس
 phrases["Active students"] = { fr: "Élèves actifs", ar: "الطلاب النشطون" };
 phrases["Active types"] = { fr: "Types actifs", ar: "الأنواع النشطة" };
 phrases["Active dimensions"] = { fr: "Dimensions actives", ar: "الأبعاد النشطة" };
+
+// ---------------------------------------------------------------------------
+// Batch 5 — translation coverage (90 keys audited)
+// ---------------------------------------------------------------------------
+phrases["A chronological view of check-ins, attendance, feedback, homework and family input."] = { fr: "Une vue chronologique des bilans, de la présence, des retours, des devoirs et des apports de la famille.", ar: "عرض زمني للتسجيلات والحضور والملاحظات والواجبات ومدخلات الأسرة." };
+phrases["A short goal-setting conversation may help"] = { fr: "Une courte conversation sur les objectifs peut aider", ar: "محادثة قصيرة لتحديد الأهداف قد تساعد" };
+phrases["Academic average"] = { fr: "Moyenne académique", ar: "المعدل الأكاديمي" };
+phrases["Academic progress"] = { fr: "Progrès académiques", ar: "التقدم الأكاديمي" };
+phrases["Across active classes"] = { fr: "Sur l’ensemble des classes actives", ar: "عبر جميع الفصول النشطة" };
+phrases["Across all teachers"] = { fr: "Sur l’ensemble des enseignants", ar: "عبر جميع المعلمين" };
+phrases["Across the roster"] = { fr: "Sur l’ensemble des effectifs", ar: "عبر جميع الطلاب" };
+phrases["active teaching staff"] = { fr: "enseignants actifs", ar: "طاقم تدريس نشط" };
+phrases["Activity over the last seven days"] = { fr: "Activité sur les sept derniers jours", ar: "النشاط خلال آخر سبعة أيام" };
+phrases["Attendance patterns"] = { fr: "Tendances de présence", ar: "أنماط الحضور" };
+phrases["Attendance records today"] = { fr: "Registres de présence du jour", ar: "سجلات الحضور اليوم" };
+phrases["Average percentage per subject"] = { fr: "Pourcentage moyen par matière", ar: "متوسط النسبة لكل مادة" };
+phrases["Based on self-reported check-ins"] = { fr: "Basé sur les bilans auto-déclarés", ar: "بناءً على التسجيلات الذاتية" };
+phrases["Born"] = { fr: "Né(e)", ar: "المواليد" };
+phrases["Both encouraging and corrective entries, in a constructive tone."] = { fr: "Des retours à la fois encourageants et correctifs, sur un ton constructif.", ar: "ملاحظات تشجيعية وتصحيحية بنبرة بناءة." };
+phrases["Civil status and daily logistics."] = { fr: "État civil et logistique du quotidien.", ar: "الحالة المدنية والتنظيم اليومي." };
+phrases["class"] = { fr: "classe", ar: "الفصل" };
+phrases["Class assignments"] = { fr: "Affectations de classe", ar: "التوزيعات الدراسية" };
+phrases["Competency framework"] = { fr: "Référentiel de compétences", ar: "إطار الكفايات" };
+phrases["Consistent academic understanding"] = { fr: "Compréhension académique constante", ar: "فهم أكاديمي مستقر" };
+phrases["Current goals"] = { fr: "Objectifs en cours", ar: "الأهداف الحالية" };
+phrases["Current mastery levels"] = { fr: "Niveaux de maîtrise actuels", ar: "مستويات الإتقان الحالية" };
+phrases["General"] = { fr: "Général", ar: "عام" };
+phrases["Homeroom"] = { fr: "Classe principale", ar: "قسم الفصل" };
+phrases["Human-led intervention and measured progress"] = { fr: "Intervention humaine et progrès mesurés", ar: "تدخل بشري وتقدم مقياس" };
+phrases["Independent dimensions, not a single student score"] = { fr: "Dimensions indépendantes, pas un score unique", ar: "أبعاد مستقلة، وليست درجة واحدة" };
+phrases["late"] = { fr: "en retard", ar: "متأخر" };
+phrases["Longitudinal timeline"] = { fr: "Chronologie longitudinale", ar: "خط زمني طولي" };
+phrases["Meetings with the family and the class team."] = { fr: "Rencontres avec la famille et l’équipe de la classe.", ar: "لقاءات مع الأسرة وفريق الفصل." };
+phrases["Messages and observations shared by the family"] = { fr: "Messages et observations partagés par la famille", ar: "رسائل وملاحظات شاركتها الأسرة" };
+phrases["Mood over recent days"] = { fr: "Humeur des derniers jours", ar: "المزاج خلال الأيام الأخيرة" };
+phrases["Most recent submissions"] = { fr: "Rendus les plus récents", ar: "أحدث التسليمات" };
+phrases["Motivation is lower than academic progress"] = { fr: "La motivation est inférieure aux progrès académiques", ar: "الدافع أقل من التقدم الأكاديمي" };
+phrases["Need attention"] = { fr: "Besoin d’attention", ar: "يحتاج إلى انتباه" };
+phrases["No achievements yet"] = { fr: "Aucun accomplissement pour l’instant", ar: "لا توجد إنجازات بعد" };
+phrases["No check-ins recorded yet"] = { fr: "Aucun bilan enregistré pour l’instant", ar: "لا توجد تسجيلات بعد" };
+phrases["No classes"] = { fr: "Aucune classe", ar: "لا توجد فصول" };
+phrases["No competencies assessed yet"] = { fr: "Aucune compétence évaluée pour l’instant", ar: "لا توجد كفايات مقيّمة بعد" };
+phrases["No consents recorded yet"] = { fr: "Aucun accord enregistré pour l’instant", ar: "لا توجد موافقات مسجلة بعد" };
+phrases["No diagnosis is inferred from these trends"] = { fr: "Aucun diagnostic n’est déduit de ces tendances", ar: "لا يُستنتج أي تشخيص من هذه الاتجاهات" };
+phrases["No documents recorded yet"] = { fr: "Aucun document enregistré pour l’instant", ar: "لا توجد مستندات مسجلة بعد" };
+phrases["No events recorded yet"] = { fr: "Aucun événement enregistré pour l’instant", ar: "لا توجد أحداث مسجلة بعد" };
+phrases["No goals yet"] = { fr: "Aucun objectif pour l’instant", ar: "لا توجد أهداف بعد" };
+phrases["No grades recorded yet"] = { fr: "Aucune note enregistrée pour l’instant", ar: "لا توجد درجات مسجلة بعد" };
+phrases["No guardians linked yet"] = { fr: "Aucun responsable lié pour l’instant", ar: "لا يوجد أولياء أمر مرتبطون بعد" };
+phrases["No homeroom teacher"] = { fr: "Aucun professeur principal", ar: "لا يوجد معلم قسم" };
+phrases["No homework submissions yet"] = { fr: "Aucun devoir rendu pour l’instant", ar: "لا توجد واجبات مسلّمة بعد" };
+phrases["No meetings yet"] = { fr: "Aucune rencontre pour l’instant", ar: "لا توجد لقاءات بعد" };
+phrases["No parent input recorded yet"] = { fr: "Aucun apport de la famille enregistré pour l’instant", ar: "لا توجد مدخلات من الأسرة مسجلة بعد" };
+phrases["No phone"] = { fr: "Pas de téléphone", ar: "لا يوجد هاتف" };
+phrases["No pickup persons yet"] = { fr: "Aucune personne autorisée pour l’instant", ar: "لا توجد أشخاص مخولون بالاستلام بعد" };
+phrases["No students match your search"] = { fr: "Aucun élève ne correspond à votre recherche", ar: "لا يوجد طلاب يطابقون بحثك" };
+phrases["No support plan yet"] = { fr: "Aucun plan d’accompagnement pour l’instant", ar: "لا توجد خطة دعم بعد" };
+phrases["No teacher feedback yet"] = { fr: "Aucun retour d’enseignant pour l’instant", ar: "لا توجد ملاحظات من المعلم بعد" };
+phrases["No teachers match your search"] = { fr: "Aucun enseignant ne correspond à votre recherche", ar: "لا يوجد معلمون يطابقون بحثك" };
+phrases["Observed average"] = { fr: "Moyenne observée", ar: "المتوسط الملاحظ" };
+phrases["Only available to authorised school staff."] = { fr: "Disponible uniquement au personnel autorisé de l’école.", ar: "متاح فقط لطاقم المدرسة المصرح لهم." };
+phrases["Open a student to see the evidence"] = { fr: "Ouvrez un élève pour voir les éléments", ar: "افتح ملف طالب لعرض الأدلة" };
+phrases["open alerts"] = { fr: "alertes ouvertes", ar: "تنبيهات مفتوحة" };
+phrases["Outcome"] = { fr: "Résultat", ar: "النتيجة" };
+phrases["PAI, PAP, PPS and AESH arrangements."] = { fr: "Dispositifs PAI, PAP, PPS et AESH.", ar: "ترتيبات PAI وPAP وPPS وAESH." };
+phrases["People allowed to pick the student up at school."] = { fr: "Personnes autorisées à récupérer l’élève à l’école.", ar: "الأشخاص المسموح لهم باستلام الطالب من المدرسة." };
+phrases["Perceived stress"] = { fr: "Stress perçu", ar: "الإجهاد المدرك" };
+phrases["Positive recent homework trend"] = { fr: "Tendance récente positive des devoirs", ar: "اتجاه إيجابي حديث في الواجبات" };
+phrases["Presence rate"] = { fr: "Taux de présence", ar: "معدل الحضور" };
+phrases["Recent observations by the class team"] = { fr: "Observations récentes de l’équipe de la classe", ar: "ملاحظات حديثة من فريق الفصل" };
+phrases["Recognitions and milestones"] = { fr: "Reconnaissances et jalons", ar: "التقديرات والمحطات" };
+phrases["Reports, certificates and administrative files"] = { fr: "Rapports, certificats et dossiers administratifs", ar: "التقارير والشهادات والملفات الإدارية" };
+phrases["Requests are visible only to authorised staff"] = { fr: "Les demandes ne sont visibles que par le personnel autorisé", ar: "الطلبات مرئية فقط للطاقم المصرح لهم" };
+phrases["Responsible"] = { fr: "Responsable", ar: "المسؤول" };
+phrases["Roster size"] = { fr: "Taille des effectifs", ar: "حجم الفوج" };
+phrases["School pulse"] = { fr: "Dynamique de l’école", ar: "مؤشر المدرسة" };
+phrases["Signed agreements and pick-up authorisations."] = { fr: "Accords signés et autorisations de sortie.", ar: "الاتفاقيات الموقعة وتفويضات الاستلام." };
+phrases["Staff directory, class assignments and teaching load."] = { fr: "Annuaire du personnel, affectations de classe et charge d’enseignement.", ar: "دليل الطاقم وتوزيعات الفصول وعبء التدريس." };
+phrases["Strengths"] = { fr: "Points forts", ar: "نقاط القوة" };
+phrases["Student and teacher owned actions"] = { fr: "Actions portées par l’élève et l’enseignant", ar: "إجراءات يملكها الطالب والمعلم" };
+phrases["Student form"] = { fr: "Formulaire élève", ar: "استمارة الطالب" };
+phrases["Student-reported wellbeing"] = { fr: "Bien-être rapporté par l’élève", ar: "رفاهية يُعلنها الطالب" };
+phrases["STUDENT360"] = { fr: "STUDENT360", ar: "STUDENT360" };
+phrases["Students flagged for follow-up"] = { fr: "Élèves signalés pour suivi", ar: "طلاب مؤشر عليهم للمتابعة" };
+phrases["Subject breakdown"] = { fr: "Répartition par matière", ar: "التوزيع حسب المادة" };
+phrases["Support opportunity"] = { fr: "Opportunité de soutien", ar: "فرصة دعم" };
+phrases["Supportive framing"] = { fr: "Cadre bienveillant", ar: "تأطير داعم" };
+phrases["Trends are descriptive, not medical or psychological diagnoses."] = { fr: "Les tendances sont descriptives, pas des diagnostics médicaux ou psychologiques.", ar: "الاتجاهات وصفية وليست تشخيصات طبية أو نفسية." };
+phrases["Unknown"] = { fr: "Inconnu", ar: "غير معروف" };
+phrases["unread"] = { fr: "non lues", ar: "غير مقروءة" };
+phrases["You are all caught up."] = { fr: "Vous êtes à jour.", ar: "لقد استعرضت كل شيء." };

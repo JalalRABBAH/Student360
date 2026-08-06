@@ -211,12 +211,13 @@ function SchoolDashboard({ data }: { data: DashboardData }) {
   const { t } = useI18n();
   const metrics = data.metrics!;
   const isNurse = data.variant === "NURSE";
-  const attendancePct = metrics.attendanceToday && metrics.attendanceBreakdown
+  const attendancePct = metrics.attendanceToday && metrics.attendanceBreakdown && metrics.attendanceToday > 0
     ? Math.round(((metrics.attendanceBreakdown.present + metrics.attendanceBreakdown.late) / metrics.attendanceToday) * 100)
-    : 0;
+    : null;
   const checkInPct = metrics.students && metrics.checkInsToday != null
     ? Math.round((metrics.checkInsToday / metrics.students) * 100)
     : 0;
+  const pulseScore = Math.round(((attendancePct ?? 0) + (metrics.homeworkCompletion ?? 0)) / 2);
 
   return (
     <div className="space-y-6">
@@ -234,7 +235,7 @@ function SchoolDashboard({ data }: { data: DashboardData }) {
             <MetricCard label={t("Teachers")} value={metrics.teachers} detail={t("Active teaching staff")} icon={GraduationCap} tone="sky" />
             <MetricCard
               label={t("Attendance today")}
-              value={`${attendancePct}%`}
+              value={attendancePct === null ? "—" : `${attendancePct}%`}
               detail={`${metrics.attendanceBreakdown?.present ?? 0} ${t("present").toLowerCase()} · ${metrics.attendanceBreakdown?.late ?? 0} ${t("late").toLowerCase()}`}
               icon={CheckCircle2} tone="amber"
             />
@@ -250,10 +251,10 @@ function SchoolDashboard({ data }: { data: DashboardData }) {
               <h2 className="font-bold text-slate-950 dark:text-white">{t("School progress pulse")}</h2>
               <p className="text-xs text-slate-500">{t("This week")} · {t("Live indicators")}</p>
             </div>
-            <StatusBadge tone={attendancePct >= 80 ? "positive" : "watch"}>{attendancePct >= 80 ? t("Healthy momentum") : t("Needs attention")}</StatusBadge>
+            <StatusBadge tone={pulseScore >= 60 ? "positive" : "watch"}>{pulseScore >= 60 ? t("Healthy momentum") : t("Needs attention")}</StatusBadge>
           </div>
           <div className="mt-6 space-y-4">
-            <ProgressBar label={t("Attendance")} value={attendancePct} tone="sky" />
+            <ProgressBar label={t("Attendance")} value={attendancePct ?? 0} tone="sky" />
             <ProgressBar label={t("Homework completion")} value={metrics.homeworkCompletion ?? 0} tone="primary" />
             <ProgressBar label={t("Student check-ins")} value={checkInPct} tone="amber" />
           </div>

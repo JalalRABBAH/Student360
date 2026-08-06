@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { cookieOptions, SESSION_COOKIE, verifySession } from "@/lib/auth/session";
+import { audit } from "@/lib/auth/audit";
 import { prisma } from "@/lib/db";
 
 export async function POST() {
@@ -13,6 +14,7 @@ export async function POST() {
     await prisma.session.deleteMany({
       where: { id: session.sid, userId: session.sub },
     });
+    await audit(session, { action: "LOGOUT", entityType: "User", entityId: session.sub });
   }
 
   store.set(SESSION_COOKIE, "", { ...cookieOptions(), maxAge: 0 });

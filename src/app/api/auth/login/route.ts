@@ -2,6 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
 import { signSession, cookieOptions, SESSION_COOKIE, sessionMaxAge } from "@/lib/auth/session";
+import { audit } from "@/lib/auth/audit";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import type { RoleCode } from "@/lib/domain/enums";
@@ -87,6 +88,29 @@ export async function POST(req: Request) {
 
   const store = await cookies();
   store.set(SESSION_COOKIE, token, cookieOptions());
+
+  await audit(
+    {
+      sub: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      schoolId: user.schoolId,
+      roles,
+      activeRole,
+      locale: activeLocale,
+      sid: session.id,
+    },
+    {
+      action: "LOGIN",
+      entityType: "User",
+      entityId: user.id,
+      metadata: { schoolName: user.school?.name ?? null },
+      ip: req.headers.get("x-forwarded-for"),
+      userAgent: req.headers.get("user-agent"),
+    },
+  );
 
   return NextResponse.json({ ok: true, user: { firstName: user.firstName, role: activeRole } });
 }

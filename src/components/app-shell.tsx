@@ -202,7 +202,13 @@ export function TopBar({
   const breadcrumb = resourceLabel ?? segments.map((segment) => t(segment.replace(/-/g, " "))).join(" / ");
 
   return (
-    <header className="fixed inset-x-0 top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 sm:px-6 lg:px-8">
+    <header
+      className={cn(
+        "fixed top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 sm:px-6 lg:px-8",
+        "inset-inline-0",
+        collapsed ? "lg:inset-inline-start-[var(--sidebar-collapsed)]" : "lg:inset-inline-start-[var(--sidebar-width)]",
+      )}
+    >
       <div className="flex items-center gap-3">
         {mobileSidebar}
         <button

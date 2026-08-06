@@ -24,6 +24,8 @@ const ACTION_CATEGORY: Record<string, string> = {
   LOGOUT: "Authentication",
   SEND_MESSAGE: "Communication",
   CREATE_THREAD: "Communication",
+  EXPORT_REPORT: "Exports",
+  UPDATE_SETTINGS: "Configuration",
 };
 
 /** Action code → human detail label (i18n key). */
@@ -32,9 +34,11 @@ const ACTION_DETAIL: Record<string, string> = {
   LOGOUT: "Signed out",
   SEND_MESSAGE: "Sent a message",
   CREATE_THREAD: "Started a conversation",
+  EXPORT_REPORT: "Exported a report",
+  UPDATE_SETTINGS: "Updated school settings",
 };
 
-export const AUDIT_CATEGORIES = ["All actions", "Authentication", "Communication"] as const;
+export const AUDIT_CATEGORIES = ["All actions", "Authentication", "Communication", "Exports", "Configuration"] as const;
 
 export type AuditEntry = {
   id: string;

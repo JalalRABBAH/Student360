@@ -1229,3 +1229,23 @@ phrases["Goal updated"] = { fr: "Objectif mis à jour", ar: "تم تحديث ا�
 phrases["Intervention"] = { fr: "Accompagnement", ar: "تدخل" };
 phrases["Alert"] = { fr: "Alerte", ar: "تنبيه" };
 phrases["Academic score"] = { fr: "Score scolaire", ar: "النتيجة الأكاديمية" };
+
+// Phase 3d — admin pages (Reports / Configuration)
+phrases["Logged with actor and time"] = { fr: "Journalisée avec auteur et heure", ar: "مسجلة مع الفاعل والوقت" };
+phrases["Report templates"] = { fr: "Modèles de rapports", ar: "قوالب التقارير" };
+phrases["Class weekly reports"] = { fr: "Rapports hebdomadaires de classe", ar: "تقارير الفصول الأسبوعية" };
+phrases["Search class"] = { fr: "Rechercher une classe", ar: "البحث عن فصل" };
+phrases["No classes match your search"] = { fr: "Aucune classe ne correspond à votre recherche", ar: "لا توجد فصول تطابق بحثك" };
+phrases["Recent exports"] = { fr: "Exportations récentes", ar: "عمليات التصدير الأخيرة" };
+phrases["Report exported"] = { fr: "Rapport exporté", ar: "تم تصدير التقرير" };
+phrases["Audited"] = { fr: "Journalisé", ar: "مُسجَّل" };
+phrases["No exports recorded yet"] = { fr: "Aucune exportation enregistrée pour le moment", ar: "لا توجد عمليات تصدير مسجلة بعد" };
+phrases["Configuration is available from a school context only."] = { fr: "La configuration n'est disponible que depuis un contexte d'établissement.", ar: "الإعدادات متاحة فقط من سياق مؤسسة تعليمية." };
+phrases["Saving…"] = { fr: "Enregistrement…", ar: "جارٍ الحفظ…" };
+phrases["Could not save settings. Please try again."] = { fr: "Impossible d'enregistrer les paramètres. Veuillez réessayer.", ar: "تعذر حفظ الإعدادات. يرجى المحاولة مرة أخرى." };
+phrases["Privacy and persistence"] = { fr: "Confidentialité et persistance", ar: "الخصوصية والمثابرة" };
+phrases["Changes are saved to this school's configuration and every change is recorded in the audit log."] = { fr: "Les modifications sont enregistrées dans la configuration de cet établissement et chaque changement est consigné dans le journal d'audit.", ar: "تُحفظ التغييرات في إعدادات هذه المؤسسة ويُسجَّل كل تغيير في سجل التدقيق." };
+phrases["Current academic year"] = { fr: "Année scolaire en cours", ar: "السنة الدراسية الحالية" };
+phrases["Active students"] = { fr: "Élèves actifs", ar: "الطلاب النشطون" };
+phrases["Active types"] = { fr: "Types actifs", ar: "الأنواع النشطة" };
+phrases["Active dimensions"] = { fr: "Dimensions actives", ar: "الأبعاد النشطة" };

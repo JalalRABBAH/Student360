@@ -1,5 +1,9 @@
-import { AnalyticsPageDemo } from "@/components/intelligence-pages";
+import { requireCapability } from "@/lib/auth/server";
+import { getAnalytics } from "@/lib/intelligence/service";
+import { AnalyticsPage } from "@/components/intelligence-ui";
 
-export default function Page() {
-  return <AnalyticsPageDemo />;
+export default async function Page() {
+  const session = await requireCapability("analytics:class");
+  const data = await getAnalytics(session);
+  return <AnalyticsPage data={data} />;
 }

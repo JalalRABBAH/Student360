@@ -19,7 +19,7 @@ import {
 import type { SessionPayload } from "@/lib/auth/session";
 import { ROLES, OBSERVATION_CATEGORY_LABELS } from "@/lib/domain/enums";
 import { listStudents } from "@/lib/students/service";
-import { addDays, avg, fullName, initials, isSameDay, pct, round, startOfDay, startOfWeek } from "@/lib/utils";
+import { addDays, avg, fullName, initials, isSameDay, round, startOfDay, startOfWeek } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -581,14 +581,15 @@ export async function getWeeklyReview(session: SessionPayload): Promise<WeeklyRe
   const studentSignal = (id: string): WeeklyGroup => {
     const cur = latest.get(id);
     if (!cur) return "STABLE";
-    const a = pct(cur.attendance);
-    const h = pct(cur.homework);
-    const m = pct(cur.motivation);
-    const w = pct(cur.wellbeing);
-    const ac = pct(cur.academic);
+    const a = cur.attendance ?? 0;
+    const h = cur.homework ?? 0;
+    const m = cur.motivation ?? 0;
+    const w = cur.wellbeing ?? 0;
+    const ac = cur.academic ?? 0;
+    const e = cur.engagement ?? 0;
     if (a < 88 || ac < 55 || h < 50 || m < 45 || w < 40) return "ATTENTION";
     if (a < 93 || ac < 65 || h < 65 || m < 55) return "WATCH";
-    if ((ac + h + pct(cur.engagement)) / 3 >= 80) return "POSITIVE";
+    if ((ac + h + e) / 3 >= 80) return "POSITIVE";
     return "STABLE";
   };
 
@@ -603,9 +604,10 @@ export async function getWeeklyReview(session: SessionPayload): Promise<WeeklyRe
 
   const homeworkDelta = deltas.homework;
   const engagementDelta = deltas.engagement;
-  const attendance = ids.length ? round(avg([...latest.values()].map((s) => pct(s.attendance))), 0) : null;
+  const attendance = ids.length ? round(avg([...latest.values()].map((s) => s.attendance ?? 0)), 0) ?? null : null;
   const checkInRate = ids.length ? round((checkInsWeek / ids.length) * 100, 0) : null;
-  const checkInDelta = checkInRate !== null && ids.length ? checkInRate - round((checkInsPrev / ids.length) * 100, 0) : null;
+  const prevCheckInRate = ids.length ? round((checkInsPrev / ids.length) * 100, 0) : null;
+  const checkInDelta = checkInRate !== null && prevCheckInRate !== null ? checkInRate - prevCheckInRate : null;
 
   const highlights: { label: string; value: string }[] = [];
   if (homeworkDelta !== null && Math.abs(homeworkDelta) >= 2) highlights.push({ label: "Homework completion", value: `${homeworkDelta > 0 ? "+" : ""}${homeworkDelta} pts` });

@@ -382,7 +382,6 @@ const phrases: Record<string, TranslationPair> = {
   "Collapse sidebar": { fr: "Réduire la barre latérale", ar: "طي الشريط الجانبي" },
   "Open navigation": { fr: "Ouvrir la navigation", ar: "فتح التنقل" },
   "Language": { fr: "Langue", ar: "اللغة" },
-  "Signing out…": { fr: "Déconnexion…", ar: "تسجيل الخروج…" },
   "Network error": { fr: "Erreur réseau", ar: "خطأ في الشبكة" },
   "English": { fr: "Anglais", ar: "الإنجليزية" },
   "French": { fr: "Français", ar: "الفرنسية" },

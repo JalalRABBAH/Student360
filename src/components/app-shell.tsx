@@ -41,7 +41,7 @@ export function Sidebar({ groups, user, collapsed, onToggleCollapse }: SidebarPr
   return (
     <aside
       className={cn(
-        "sidebar-anchor fixed inset-y-0 z-40 flex flex-col border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-950",
+        "sidebar-anchor fixed inset-y-0 z-40 hidden flex-col border-slate-200 bg-white transition-all duration-300 dark:border-slate-800 dark:bg-slate-950 lg:flex",
         collapsed ? "w-[var(--sidebar-collapsed)]" : "w-[var(--sidebar-width)]",
       )}
     >

@@ -283,7 +283,7 @@ export async function getHomework(session: SessionPayload): Promise<HomeworkData
         dueDate: hw.dueDate.toISOString().slice(0, 10),
         status,
         needsReview: submitted - completed > 0,
-        completion: submitted ? round((completed / submitted) * 100, 0) : 0,
+        completion: round((completed / submitted) * 100, 0) ?? 0,
         submitted: completed,
         total: submitted,
       };
@@ -296,7 +296,7 @@ export async function getHomework(session: SessionPayload): Promise<HomeworkData
     metrics: {
       open: rows.filter((r) => r.status !== "CLOSED").length,
       dueToday,
-      completion: total ? round((done / total) * 100, 0) : 0,
+      completion: total ? round((done / total) * 100, 0) ?? 0 : 0,
       needFeedback,
     },
   };
@@ -358,7 +358,7 @@ export async function getAttendance(session: SessionPayload): Promise<Attendance
   const attendance30 = (id: string) => {
     const b = perStudent.get(id);
     if (!b || !b.total) return 0;
-    return round(((b.present + b.excused + b.late * 0.5) / b.total) * 100, 0);
+    return round(((b.present + b.excused + b.late * 0.5) / b.total) * 100, 0) ?? 0;
   };
 
   const roster: AttendanceStudent[] = students.map((s) => {
@@ -375,7 +375,7 @@ export async function getAttendance(session: SessionPayload): Promise<Attendance
   });
 
   const classes = [...new Set(students.map((s) => s.currentClass?.name).filter((v): v is string => Boolean(v)))];
-  const average30 = roster.length ? round(avg(roster.map((r) => r.attendance30)), 0) : 0;
+  const average30 = roster.length ? round(avg(roster.map((r) => r.attendance30)), 0) ?? 0 : 0;
 
   return {
     classes,
@@ -455,7 +455,7 @@ export async function getObservations(session: SessionPayload): Promise<Observat
     items,
     metrics: {
       thisWeek: weekCount,
-      positiveRate: rows.length ? round((rows.filter((o) => o.sentiment === "POSITIVE").length / rows.length) * 100, 0) : 0,
+      positiveRate: rows.length ? round((rows.filter((o) => o.sentiment === "POSITIVE").length / rows.length) * 100, 0) ?? 0 : 0,
       followUps: attentionCount,
     },
   };

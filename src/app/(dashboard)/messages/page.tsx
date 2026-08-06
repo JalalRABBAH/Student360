@@ -1,5 +1,15 @@
-import { MessagesPageDemo } from "@/components/communication-admin-pages";
+import { requireCapability } from "@/lib/auth/server";
+import { listThreadsFor, recipientDirectory } from "@/lib/messages/service";
+import { MessagesPage } from "@/components/messages-page";
 
-export default function Page() {
-  return <MessagesPageDemo />;
+export default async function Page() {
+  const session = await requireCapability("message:write");
+  const [threads, directory] = await Promise.all([listThreadsFor(session, {}), recipientDirectory(session, "")]);
+  return (
+    <MessagesPage
+      sessionUser={{ id: session.sub, firstName: session.firstName, lastName: session.lastName }}
+      initialThreads={threads}
+      directory={directory}
+    />
+  );
 }

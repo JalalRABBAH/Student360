@@ -385,11 +385,32 @@ const phrases: Record<string, TranslationPair> = {
   "Arabic": { fr: "Arabe", ar: "العربية" },
   "Could not save language. Please try again.": { fr: "Impossible d’enregistrer la langue. Réessayez.", ar: "تعذر حفظ اللغة. يرجى المحاولة مرة أخرى." },
   "Could not sign out. Please try again.": { fr: "Impossible de se déconnecter. Réessayez.", ar: "تعذر تسجيل الخروج. يرجى المحاولة مرة أخرى." },
+  "GENERAL": { fr: "Général", ar: "عام" },
+  "ACADEMIC": { fr: "Académique", ar: "أكاديمي" },
+  "WELLBEING": { fr: "Bien-être", ar: "الرفاهية" },
+  "ATTENDANCE": { fr: "Présence", ar: "الحضور" },
+  "HOMEWORK": { fr: "Devoirs", ar: "الواجبات" },
+  "ADMIN": { fr: "Administratif", ar: "إداري" },
+  "Person": { fr: "Personne", ar: "شخص" },
+  "Conversation": { fr: "Conversation", ar: "محادثة" },
+  "Administrative": { fr: "Administratif", ar: "إداري" },
+  "Remove": { fr: "Retirer", ar: "إزالة" },
+  "Sending…": { fr: "Envoi…", ar: "جارٍ الإرسال…" },
+  "No conversations yet": { fr: "Aucune conversation pour le moment", ar: "لا توجد محادثات بعد" },
+  "Select a conversation": { fr: "Sélectionnez une conversation", ar: "حدد محادثة" },
+  "Choose a conversation to start reading.": { fr: "Choisissez une conversation pour commencer à lire.", ar: "اختر محادثة لبدء القراءة." },
+  "About (optional)": { fr: "À propos de (facultatif)", ar: "حول (اختياري)" },
+  "Not specified": { fr: "Non précisé", ar: "غير محدد" },
+  "Message all families of this class.": { fr: "Envoyer à toutes les familles de cette classe.", ar: "إرسال إلى جميع أسر هذا الفصل." },
+  "Search people…": { fr: "Rechercher des personnes…", ar: "البحث عن أشخاص…" },
+  "Could not send your message. Please try again.": { fr: "Impossible d’envoyer votre message. Réessayez.", ar: "تعذر إرسال رسالتك. يرجى المحاولة مرة أخرى." },
+  "Could not load this conversation.": { fr: "Impossible de charger cette conversation.", ar: "تعذر تحميل هذه المحادثة." },
 };
 
 const replacements: Array<[RegExp, (locale: Locale, match: string, ...groups: string[]) => string | undefined]> = [
   [/^(\d+) unread$/, (locale, _match, count) => locale === "fr" ? `${count} non lues` : `${count} غير مقروءة`],
   [/^(\d+) students$/, (locale, _match, count) => locale === "fr" ? `${count} élèves` : `${count} طالبًا`],
+  [/^(\d+) participants$/, (locale, _match, count) => locale === "fr" ? `${count} participants` : `${count} مشاركًا`],
   [/^Grade ([789])([AB])$/, (locale, _match, grade, section) => locale === "fr" ? `${grade}e ${section}` : `الصف ${grade === "7" ? "السابع" : grade === "8" ? "الثامن" : "التاسع"} ${section === "A" ? "أ" : "ب"}`],
 ];
 

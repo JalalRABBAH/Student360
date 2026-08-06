@@ -40,7 +40,7 @@ function LoginForm() {
         router.refresh();
       }
     } catch {
-      setError(locale === "fr" ? "Erreur réseau" : locale === "ar" ? "خطأ في الشبكة" : "Network error");
+      setError(t("Network error"));
     } finally {
       setLoading(false);
     }
@@ -109,10 +109,12 @@ export default function LoginPage() {
         <div className="rounded-xl bg-slate-50 p-3 text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           <p className="mb-1 font-medium">{t("Demo accounts")} ({t("Password").toLowerCase()}: student360)</p>
           <ul className="space-y-0.5">
+            <li dir="ltr">super@student360.demo — {t("Super admin")}</li>
             <li dir="ltr">principal@lesoliviers.edu — {t("Principal")}</li>
             <li dir="ltr">admin@lesoliviers.edu — {t("Admin")}</li>
             <li dir="ltr">amina.martin@lesoliviers.edu — {t("Teacher")}</li>
-            <li dir="ltr">super@student360.demo — {t("Super admin")}</li>
+            <li dir="ltr">charlotte.squalli.1@student360.demo — {t("Parent")}</li>
+            <li dir="ltr">ayman.squalli@student360.demo — {t("Student")}</li>
           </ul>
         </div>
       </div>

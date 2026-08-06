@@ -90,7 +90,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
       items: [
         { label: "Weekly Review", href: "/weekly-review", icon: "Sparkles" },
         { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-        { label: "Messages", href: "/messages", icon: "MessageSquare", badge: 2 },
+        { label: "Messages", href: "/messages", icon: "MessageSquare" },
       ],
     },
   ],

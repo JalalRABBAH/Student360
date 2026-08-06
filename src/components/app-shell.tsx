@@ -67,7 +67,7 @@ export function Sidebar({ groups, user, collapsed, onToggleCollapse }: SidebarPr
             "hidden rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 lg:block dark:hover:bg-slate-800 dark:hover:text-slate-300",
             collapsed && "absolute inset-x-0 top-[0.85rem] mx-auto w-fit",
           )}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
         >
           {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
@@ -124,7 +124,7 @@ export function MobileSidebar({ groups, user }: { groups: { label: string; items
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open navigation">
+        <Button variant="ghost" size="icon" className="lg:hidden" aria-label={t("Open navigation")}>
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
@@ -182,11 +182,15 @@ export function TopBar({
   mobileSidebar,
   collapsed,
   onToggleCollapse,
+  notifications,
+  unreadNotifications,
 }: {
   user: SessionUser;
   mobileSidebar: React.ReactNode;
   collapsed: boolean;
   onToggleCollapse: () => void;
+  notifications?: import("@/lib/notifications/service").AppNotification[];
+  unreadNotifications?: number;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
@@ -209,18 +213,18 @@ export function TopBar({
         collapsed ? "lg:inset-inline-start-[var(--sidebar-collapsed)]" : "lg:inset-inline-start-[var(--sidebar-width)]",
       )}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         {mobileSidebar}
         <button
           onClick={onToggleCollapse}
           className="hidden rounded-lg p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 lg:block dark:hover:bg-slate-800 dark:hover:text-slate-300"
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("Expand sidebar") : t("Collapse sidebar")}
         >
           {collapsed ? <PanelLeft className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
         </button>
         <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
         <div className="hidden items-center gap-2 text-sm text-slate-500 dark:text-slate-400 sm:flex">
-          <span className="font-medium text-slate-900 dark:text-slate-100">{user.schoolName ?? "STUDENT360"}</span>
+          <span className="font-medium text-slate-900 dark:text-slate-100">{user.schoolName ?? t("STUDENT360")}</span>
           {barePathname && barePathname !== "/dashboard" && (
             <>
               <span className="text-slate-300 dark:text-slate-700">/</span>
@@ -230,9 +234,9 @@ export function TopBar({
         </div>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="ms-auto flex items-center gap-2 sm:gap-3">
         <GlobalSearch />
-        <NotificationCenter />
+        <NotificationCenter initial={notifications} initialUnread={unreadNotifications} />
         <LanguageSwitcher />
         <ThemeToggle />
         <UserMenu user={user} />
@@ -245,10 +249,14 @@ export function AppShell({
   groups,
   user,
   children,
+  notifications = [],
+  unreadNotifications = 0,
 }: {
   groups: { label: string; items: NavSpec[] }[];
   user: SessionUser;
   children: React.ReactNode;
+  notifications?: import("@/lib/notifications/service").AppNotification[];
+  unreadNotifications?: number;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -260,6 +268,8 @@ export function AppShell({
         mobileSidebar={<MobileSidebar groups={groups} user={user} />}
         collapsed={collapsed}
         onToggleCollapse={() => setCollapsed((c) => !c)}
+        notifications={notifications}
+        unreadNotifications={unreadNotifications}
       />
       <main
         className={cn(

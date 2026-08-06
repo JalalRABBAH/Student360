@@ -4,10 +4,11 @@ import { LocalizedLink as Link } from "@/i18n/provider";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Bell, Check, ChevronRight, LogOut, Search, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { demoClasses, demoNotifications, demoStudents } from "@/lib/demo-data";
+import { demoClasses, demoStudents } from "@/lib/demo-data";
 import { cn, initials } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import type { AppNotification } from "@/lib/notifications/service";
 import type { SessionUser } from "@/components/app-shell";
 
 export function GlobalSearch() {
@@ -55,14 +56,26 @@ export function GlobalSearch() {
   );
 }
 
-export function NotificationCenter() {
+export function NotificationCenter({ initial = [], initialUnread = 0 }: { initial?: AppNotification[]; initialUnread?: number }) {
   const { t, href } = useI18n();
   const [open, setOpen] = useState(false);
-  const [read, setRead] = useState<string[]>([]);
+  const [notifications, setNotifications] = useState<AppNotification[]>(initial);
+  const [unread, setUnread] = useState(initialUnread);
   const containerRef = useRef<HTMLDivElement>(null);
-  const unread = demoNotifications.length - read.length;
   useEffect(() => {
     if (!open) return;
+    const refresh = async () => {
+      try {
+        const response = await fetch("/api/notifications", { method: "GET" });
+        if (!response.ok) return;
+        const data = await response.json();
+        setNotifications(data.notifications);
+        setUnread(data.unread);
+      } catch {
+        /* keep last known state */
+      }
+    };
+    refresh();
     const dismiss = (event: MouseEvent | KeyboardEvent) => {
       if (event instanceof KeyboardEvent && event.key === "Escape") {
         setOpen(false);
@@ -79,6 +92,20 @@ export function NotificationCenter() {
       document.removeEventListener("keydown", dismiss);
     };
   }, [open]);
+  const markAllRead = async () => {
+    try {
+      await fetch("/api/notifications", { method: "POST" });
+    } catch {
+      /* non fatal */
+    }
+    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
+    setUnread(0);
+  };
+  const openNotification = (item: AppNotification) => {
+    setNotifications((current) => current.map((entry) => (entry.id === item.id ? { ...entry, read: true } : entry)));
+    if (!item.read) setUnread((current) => Math.max(0, current - 1));
+    setOpen(false);
+  };
   return (
     <div ref={containerRef} className="relative">
       <Button variant="ghost" size="icon" className="relative text-slate-500" onClick={() => setOpen((value) => !value)} aria-label={t(open ? "Close notifications" : "Open notifications")} aria-expanded={open}>
@@ -87,8 +114,21 @@ export function NotificationCenter() {
       </Button>
       {open ? (
         <div className="absolute end-0 top-12 z-[70] w-[min(92vw,380px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-950">
-          <div className="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-800"><div><div className="font-bold">{t("Notifications")}</div><div className="text-xs text-slate-500">{t(`${unread} unread`)}</div></div><button type="button" disabled={!unread} onClick={() => setRead(demoNotifications.map((item) => item.id))} className="text-xs font-semibold text-primary-600 disabled:opacity-40">{t("Mark all read")}</button></div>
-          <div>{demoNotifications.map((item) => <Link key={item.id} href={href(item.href)} onClick={() => { setRead((current) => current.includes(item.id) ? current : [...current, item.id]); setOpen(false); }} className={cn("flex gap-3 border-b border-slate-100 p-4 dark:border-slate-800", !read.includes(item.id) && "bg-primary-50/60 dark:bg-primary-500/5")}><div className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", item.priority === "HIGH" ? "bg-rose-500" : item.priority === "LOW" ? "bg-emerald-500" : "bg-sky-500")} /><div className="flex-1"><div className="text-sm font-semibold">{t(item.title)}</div><div className="mt-1 text-xs text-slate-500">{t(item.body)}</div></div>{read.includes(item.id) ? <Check className="h-4 w-4 text-emerald-500" /> : null}</Link>)}</div>
+          <div className="flex items-center justify-between border-b border-slate-100 p-4 dark:border-slate-800"><div><div className="font-bold">{t("Notifications")}</div><div className="text-xs text-slate-500">{unread} {t("unread")}</div></div><button type="button" disabled={!unread} onClick={markAllRead} className="text-xs font-semibold text-primary-600 disabled:opacity-40">{t("Mark all read")}</button></div>
+          <div>{notifications.map((item) => {
+            const dot = item.priority === "HIGH" ? "bg-rose-500" : item.priority === "LOW" ? "bg-emerald-500" : "bg-sky-500";
+            return (
+              <Link key={item.id} href={href(item.linkUrl ?? "/messages")} onClick={() => openNotification(item)} className={cn("flex gap-3 border-b border-slate-100 p-4 dark:border-slate-800", !item.read && "bg-primary-50/60 dark:bg-primary-500/5")}>
+                <div className={cn("mt-1 h-2.5 w-2.5 shrink-0 rounded-full", dot)} />
+                <div className="flex-1">
+                  <div className="text-sm font-semibold">{t(item.title)}</div>
+                  {item.body ? <div className="mt-1 text-xs text-slate-500">{item.body}</div> : null}
+                </div>
+                {item.read ? <Check className="h-4 w-4 text-emerald-500" /> : null}
+              </Link>
+            );
+          })}</div>
+          {!notifications.length ? <p className="p-8 text-center text-sm text-slate-500">{t("You are all caught up.")}</p> : null}
         </div>
       ) : null}
     </div>
@@ -134,8 +174,8 @@ export function UserMenu({ user }: { user: SessionUser }) {
   };
   return (
     <div ref={containerRef} className="relative">
-      <button type="button" aria-label="Open account menu" aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 text-xs font-bold text-white">{initials(user.firstName, user.lastName)}</button>
-      {open ? <div className="absolute end-0 top-12 z-[70] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-950"><div className="p-3"><div className="font-semibold">{user.firstName} {user.lastName}</div><div className="truncate text-xs text-slate-500">{user.email}</div><div className="mt-2 text-[10px] font-semibold uppercase text-primary-600">{user.roles.join(", ")}</div></div><div className="border-t border-slate-100 py-2 dark:border-slate-800"><Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900"><UserRound className="h-4 w-4" />Account preferences</Link><div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm"><span>Language</span><LanguageSwitcher compact /></div><button type="button" disabled={signingOut} onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/5"><LogOut className="h-4 w-4" />{signingOut ? "Signing out…" : "Sign out"}</button>{logoutError ? <p className="px-3 py-1 text-xs text-rose-600">{logoutError}</p> : null}</div></div> : null}
+      <button type="button" aria-label={t("Open account menu")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 text-xs font-bold text-white">{initials(user.firstName, user.lastName)}</button>
+      {open ? <div className="absolute end-0 top-12 z-[70] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-950"><div className="p-3"><div className="font-semibold">{user.firstName} {user.lastName}</div><div className="truncate text-xs text-slate-500">{user.email}</div><div className="mt-2 text-[10px] font-semibold uppercase text-primary-600">{user.roles.map((role) => t(role === "SUPER_ADMIN" ? "Super admin" : role[0] + role.slice(1).toLowerCase())).join(", ")}</div></div><div className="border-t border-slate-100 py-2 dark:border-slate-800"><Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900"><UserRound className="h-4 w-4" />{t("Account preferences")}</Link><div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm"><span>{t("Language")}</span><LanguageSwitcher compact /></div><button type="button" disabled={signingOut} onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/5"><LogOut className="h-4 w-4" />{signingOut ? t("Signing out…") : t("Sign out")}</button>{logoutError ? <p className="px-3 py-1 text-xs text-rose-600">{logoutError}</p> : null}</div></div> : null}
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { requireSession } from "@/lib/auth/server";
 import { prisma } from "@/lib/db";
 import { AppShell, type SessionUser } from "@/components/app-shell";
-import { navigationForRoles } from "@/components/navigation";
+import { navigationForRoles, type NavSpec } from "@/components/navigation";
 import { ThemeProvider } from "@/components/theme-provider";
 import { redirect } from "next/navigation";
 import type { RoleCode } from "@/lib/domain/enums";
 import { headers } from "next/headers";
 import { defaultLocale, isLocale, localizePath } from "@/i18n/config";
+import { listNotifications, unreadMessageCount, unreadNotificationCount } from "@/lib/notifications/service";
 
 export default async function DashboardLayout({
   children,
@@ -42,11 +43,20 @@ export default async function DashboardLayout({
     avatarUrl: user.avatarUrl,
   };
 
-  const navSpecs = navigationForRoles(roles as RoleCode[]);
+  const [notifications, unreadNotifications, unreadMessages] = await Promise.all([
+    listNotifications(session),
+    unreadNotificationCount(session),
+    unreadMessageCount(session),
+  ]);
+
+  const navSpecs = navigationForRoles(roles as RoleCode[]).map((group) => ({
+    ...group,
+    items: group.items.map((item): NavSpec => (item.href === "/messages" && unreadMessages > 0 ? { ...item, badge: unreadMessages } : item)),
+  }));
 
   return (
     <ThemeProvider>
-      <AppShell groups={navSpecs} user={sessionUser}>
+      <AppShell groups={navSpecs} user={sessionUser} notifications={notifications} unreadNotifications={unreadNotifications}>
         {children}
       </AppShell>
     </ThemeProvider>

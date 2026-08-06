@@ -513,7 +513,7 @@ async function notifyRecipients(args: {
     schoolId: args.schoolId,
     userId: r.userId,
     type: isStaffRole(r.roles.map((role) => role.roleCode)) ? "TEACHER_FEEDBACK" : "PARENT_MESSAGE",
-    title: `New message from ${args.senderName}`,
+    title: "New message",
     body: args.threadSubject,
     linkUrl: "/messages",
     priority: "NORMAL",

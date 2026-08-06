@@ -1062,8 +1062,6 @@ Object.assign(phrases, {
   "Tenants on the platform": { fr: "Établissements sur la plateforme", ar: "المؤسسات على المنصة" },
   "Active student accounts": { fr: "Comptes élèves actifs", ar: "حسابات الطلاب النشطة" },
   "Active schools": { fr: "Écoles actives", ar: "المدارس النشطة" },
-  "Active tenants": { fr: "Établissements actifs", ar: "المؤسسات النشطة" },
-  "Active teaching staff": { fr: "Enseignants actifs", ar: "الكادر التعليمي النشط" },
   "No users match your search": { fr: "Aucun utilisateur ne correspond à votre recherche", ar: "لا يوجد مستخدمون يطابقون بحثك" },
   "No schools match your search": { fr: "Aucune école ne correspond à votre recherche", ar: "لا توجد مدارس تطابق بحثك" },
 });

@@ -25,6 +25,7 @@ import {
   VISIBILITY,
   ROLES,
   DAILY_RATING_CRITERIA,
+  DEFAULT_ACTION_TEMPLATES,
   type RoleCode,
 } from "@/lib/domain/enums";
 import * as P from "./seed/personas";
@@ -1587,6 +1588,31 @@ async function seedPhase1Meetings(ctx: SchoolContext) {
 }
 
 // ---------------------------------------------------------------------------
+// Actions — default recurring templates offered to the school
+// ---------------------------------------------------------------------------
+
+async function seedDefaultActionTemplates(ctx: SchoolContext) {
+  section("Actions — default templates");
+  const rows: Prisma.ActionTemplateCreateManyInput[] = DEFAULT_ACTION_TEMPLATES.map((template) => ({
+    id: nid("tpl"),
+    schoolId: ctx.schoolId,
+    code: template.code,
+    title: template.title,
+    titleKey: template.titleKey,
+    description: template.description ?? null,
+    targetRole: template.targetRole,
+    required: template.required,
+    frequency: template.frequency,
+    source: "APP",
+    classId: null,
+    startDate: HISTORY_FROM,
+    active: true,
+    createdById: null,
+  }));
+  await bulk("Action templates", rows, (chunk) => prisma.actionTemplate.createMany({ data: chunk }));
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
@@ -1615,6 +1641,7 @@ async function main() {
   await seedPhase1PickupPersons(ctx);
   await seedPhase1LearningPlans(ctx);
   await seedPhase1Meetings(ctx);
+  await seedDefaultActionTemplates(ctx);
 
   const duration = ((Date.now() - start) / 1000).toFixed(1);
   console.log(`\nSeed complete in ${duration}s`);

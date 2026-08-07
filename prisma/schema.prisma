@@ -78,6 +78,8 @@ model School {
   pickupPeople   PickupPerson[]
   learningPlans  LearningPlan[]
   meetings       Meeting[]
+  actionTemplates  ActionTemplate[]
+  actionAssignments ActionAssignment[]
 
   @@index([status])
 }
@@ -191,6 +193,7 @@ model SchoolClass {
   observations TeacherObservation[]
   slots        TimetableSlot[]
   events       ActivityEvent[]
+  actionTemplates ActionTemplate[]
 
   @@unique([academicYearId, name])
   @@index([schoolId, gradeOrder])
@@ -232,6 +235,7 @@ model User {
   threadMembers     ThreadParticipant[]
   auditLogs         AuditLog[]
   eventsActed       ActivityEvent[]     @relation("EventActor")
+  assignedActions   ActionAssignment[]  @relation("ActionAssignee")
 
   @@index([schoolId])
   @@index([email])
@@ -346,6 +350,7 @@ model Student {
   plans         LearningPlan[]
   meetings      Meeting[]
   // ---------------------------------------------------
+  actionAssignments ActionAssignment[]
 
   @@unique([schoolId, studentNumber])
   @@index([schoolId, status])
@@ -1329,4 +1334,74 @@ model Meeting {
 
   @@index([studentId, date])
   @@index([schoolId, date])
+}
+
+// ===========================================================================
+// ACTIONS — recurring, mandatory/optional tasks that feed the platform
+// ---------------------------------------------------------------------------
+// An ActionTemplate describes a recurring action the school wants done
+// (daily attendance, weekly check-in, monthly parent report…). The platform
+// materialises ActionAssignment rows for every eligible user of the targeted
+// period when they open the "Actions" screen (idempotent, no cron required).
+// Admin and teachers can also assign one-off actions manually.
+// ===========================================================================
+
+model ActionTemplate {
+  id          String   @id @default(cuid())
+  schoolId    String
+  code        String
+  title       String
+  titleKey    String?
+  description String?
+  targetRole  String   @default("TEACHER") // TEACHER | STUDENT | PARENT
+  required    String   @default("OPTIONAL") // MANDATORY | OPTIONAL
+  frequency   String   @default("WEEKLY") // DAILY | WEEKLY | MONTHLY | ONE_OFF
+  source      String   @default("APP") // ADMIN | APP | TEACHER
+  classId     String? // optional scope — restrict to one class
+  startDate   DateTime @default(now())
+  active      Boolean  @default(true)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class  SchoolClass? @relation(fields: [classId], references: [id])
+  assignments ActionAssignment[]
+
+  @@unique([schoolId, code])
+  @@index([schoolId, targetRole, active])
+  @@map("action_templates")
+}
+
+model ActionAssignment {
+  id             String   @id @default(cuid())
+  schoolId       String
+  templateId     String?
+  assigneeUserId String
+  studentId      String?
+  assignedById   String?
+  source         String   @default("APP") // ADMIN | APP | TEACHER
+  required       String   @default("OPTIONAL") // MANDATORY | OPTIONAL
+  title          String
+  titleKey       String?
+  description    String?
+  dueDate        DateTime
+  periodStart    DateTime?
+  periodEnd      DateTime?
+  status         String   @default("PENDING") // PENDING | DONE | SKIPPED
+  completedAt    DateTime?
+  completedNote  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  school   School          @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  template ActionTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  assignee User            @relation("ActionAssignee", fields: [assigneeUserId], references: [id], onDelete: Cascade)
+  student  Student?        @relation(fields: [studentId], references: [id], onDelete: SetNull)
+
+  @@unique([templateId, assigneeUserId, periodStart])
+  @@index([assigneeUserId, status, dueDate])
+  @@index([schoolId, status])
+  @@index([templateId, periodStart])
+  @@map("action_assignments")
 }

@@ -1,385 +1,486 @@
-import type { Prisma, SchoolConfig } from "@prisma/client";
+/**
+ * STUDENT360 — Administration service (socle admin).
+ *
+ * Creates students, guardians, teachers, classes, teacher assignments and
+ * timetable slots. Every mutation is guarded by `student:manage` /
+ * `class:manage` capabilities and scoped to the caller's school. New accounts
+ * receive a generated temporary password that is returned ONCE to the admin.
+ */
+
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { can, resolveStudentScope } from "@/lib/auth/rbac";
+import { hashPassword } from "@/lib/auth/password";
 import type { SessionPayload } from "@/lib/auth/session";
-import { signalFor } from "@/lib/intelligence/service";
-import { addDays, avg, fullName, round, startOfDay } from "@/lib/utils";
+import { can, hasRole } from "@/lib/auth/rbac";
+import { ROLES } from "@/lib/domain/enums";
+import { audit } from "@/lib/auth/audit";
 
 // ---------------------------------------------------------------------------
-// Shared helpers
+// Guards & helpers
 // ---------------------------------------------------------------------------
 
-type Scope = string[] | "ALL";
+function requireSchool(session: SessionPayload) {
+  if (!session.schoolId) throw new Error("FORBIDDEN");
+  if (!can(session, "student:manage") && !can(session, "class:manage")) throw new Error("FORBIDDEN");
+  return session.schoolId;
+}
 
-async function scopeStudentIds(session: SessionPayload): Promise<Scope> {
-  const scope = await resolveStudentScope(session);
-  if (scope.kind === "PLATFORM") return "ALL";
-  if (scope.kind === "ALL_SCHOOL") {
-    const rows = await prisma.student.findMany({
-      where: { schoolId: scope.schoolId, status: "ACTIVE" },
+function requireClassManage(session: SessionPayload) {
+  if (!session.schoolId) throw new Error("FORBIDDEN");
+  if (!can(session, "class:manage")) throw new Error("FORBIDDEN");
+  return session.schoolId;
+}
+
+export function generateTemporaryPassword() {
+  const chars = "abcdefghjkmnpqrstuvwxyz23456789";
+  let suffix = "";
+  for (let i = 0; i < 6; i++) suffix += chars[Math.floor(Math.random() * chars.length)];
+  return `Init-${suffix}`;
+}
+
+async function currentAcademicYear(schoolId: string) {
+  const year = await prisma.academicYear.findFirst({
+    where: { schoolId, isCurrent: true },
+    select: { id: true },
+  });
+  if (!year) throw new Error("NO_ACADEMIC_YEAR");
+  return year.id;
+}
+
+async function nextSequenceNumber(schoolId: string, prefix: string) {
+  const count = await prisma.user.count({ where: { schoolId } });
+  return `${prefix}${String(count + 1).padStart(4, "0")}`;
+}
+
+function isUniqueViolation(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002";
+}
+
+type CreatedAccount = { userId: string; email: string; firstName: string; lastName: string; temporaryPassword: string };
+
+// ---------------------------------------------------------------------------
+// Students (with linked guardians)
+// ---------------------------------------------------------------------------
+
+export type CreateStudentInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  classId?: string | null;
+  dateOfBirth?: string | null;
+  gender?: string | null;
+  studentNumber?: string | null;
+  guardians?: Array<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    relationship?: string;
+    isPrimary?: boolean;
+  }>;
+};
+
+export async function createStudent(session: SessionPayload, input: CreateStudentInput): Promise<CreatedAccount> {
+  const schoolId = requireSchool(session);
+  if (!input.firstName?.trim() || !input.lastName?.trim() || !input.email?.trim()) throw new Error("INVALID");
+
+  const studentNumber = input.studentNumber?.trim() || (await nextSequenceNumber(schoolId, "STD"));
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
+
+  let classRecord: { id: string } | null = null;
+  if (input.classId) {
+    classRecord = await prisma.schoolClass.findFirst({
+      where: { id: input.classId, schoolId },
       select: { id: true },
     });
-    return rows.map((r) => r.id);
+    if (!classRecord) throw new Error("NOT_FOUND");
   }
-  if (scope.kind === "STUDENT_IDS") return scope.studentIds;
-  return [];
+
+  let userId: string;
+  let studentId: string;
+  try {
+    const user = await prisma.user.create({
+      data: {
+        schoolId,
+        email: input.email.trim().toLowerCase(),
+        passwordHash,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        locale: "en",
+        theme: "dark",
+        isActive: true,
+        mustReset: true,
+        roles: { create: { roleCode: ROLES.STUDENT, schoolId } },
+        student: {
+          create: {
+            schoolId,
+            studentNumber,
+            dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null,
+            gender: input.gender || null,
+            currentClassId: classRecord?.id ?? null,
+            enrolledAt: new Date(),
+            status: "ACTIVE",
+          },
+        },
+      },
+      select: { id: true, student: { select: { id: true } } },
+    });
+    userId = user.id;
+    studentId = user.student.id;
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+    throw error;
+  }
+
+  if (classRecord) {
+    const yearId = await currentAcademicYear(schoolId);
+    await prisma.enrollment.create({
+      data: { studentId, classId: classRecord.id, academicYearId: yearId, status: "ACTIVE", joinedAt: new Date() },
+    });
+  }
+
+  const guardians: CreatedAccount[] = [];
+  for (const g of input.guardians ?? []) {
+    if (!g.email?.trim() || !g.firstName?.trim() || !g.lastName?.trim()) continue;
+    guardians.push(await createGuardianAndLink(session, schoolId, studentId, {
+      firstName: g.firstName,
+      lastName: g.lastName,
+      email: g.email,
+      relationship: g.relationship,
+      isPrimary: g.isPrimary,
+    }));
+  }
+
+  await audit(session, {
+    action: "STUDENT.CREATED",
+    entityType: "Student",
+    entityId: studentId,
+    studentId,
+    metadata: { studentNumber, classId: input.classId ?? null, guardians: guardians.length },
+  });
+
+  return { userId, email: input.email.trim().toLowerCase(), firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
 }
 
-function studentWhereIn(scope: Scope): Prisma.StudentWhereInput {
-  if (scope === "ALL") return { status: "ACTIVE" };
-  if (scope.length) return { id: { in: scope }, status: "ACTIVE" };
-  return { id: "__none__", status: "ACTIVE" };
-}
+export async function createGuardianAndLink(
+  session: SessionPayload,
+  schoolId: string,
+  studentRowId: string,
+  input: { firstName: string; lastName: string; email: string; relationship?: string; isPrimary?: boolean },
+): Promise<CreatedAccount> {
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
 
-function auditScopeWhere(session: SessionPayload): Prisma.AuditLogWhereInput {
-  return session.schoolId ? { schoolId: session.schoolId } : {};
+  const user = await prisma.user.create({
+    data: {
+      schoolId,
+      email: input.email.trim().toLowerCase(),
+      passwordHash,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      locale: "en",
+      theme: "light",
+      isActive: true,
+      mustReset: true,
+      roles: { create: { roleCode: ROLES.PARENT, schoolId } },
+      guardian: { create: { schoolId, preferredContact: "EMAIL", status: "ACTIVE" } },
+    },
+    select: { id: true, guardian: { select: { id: true } } },
+  }).catch((error) => {
+    if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+    throw error;
+  });
+
+  await prisma.parentStudentRelationship.create({
+    data: {
+      guardianId: user.guardian.id,
+      studentId: studentRowId,
+      relationship: input.relationship || "PARENT",
+      isPrimary: input.isPrimary ?? false,
+    },
+  });
+
+  await audit(session, {
+    action: "GUARDIAN.CREATED",
+    entityType: "Guardian",
+    entityId: user.guardian.id,
+    studentId: studentRowId,
+    metadata: { relationship: input.relationship || "PARENT" },
+  });
+
+  return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
 }
 
 // ---------------------------------------------------------------------------
-// Reports
+// Parents (standalone, then linked to children)
 // ---------------------------------------------------------------------------
 
-export const REPORT_TEMPLATES = [
-  { id: "student-weekly", title: "Student weekly report", description: "Individual progress, goals, feedback and attendance", scope: "STUDENT" },
-  { id: "student-term", title: "Student term report", description: "Full term academic and competency synthesis", scope: "STUDENT" },
-  { id: "class-weekly", title: "Class weekly report", description: "Class indicators, progress groups and highlights", scope: "CLASS" },
-  { id: "attendance", title: "Attendance report", description: "Attendance patterns by grade, class and period", scope: "SCHOOL" },
-  { id: "homework", title: "Homework report", description: "Completion, lateness and support needs", scope: "SCHOOL" },
-  { id: "intervention", title: "Intervention report", description: "Open plans, outcomes and measured progress", scope: "SUPPORT" },
-] as const;
-
-export const REPORT_SCOPE_LABELS: Record<string, string> = {
-  STUDENT: "Student",
-  CLASS: "Class",
-  SCHOOL: "School",
-  SUPPORT: "Support",
+export type CreateParentInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  studentIds?: string[];
+  relationship?: string;
 };
 
-export type ClassReportSummary = {
-  classId: string;
+export async function createParent(session: SessionPayload, input: CreateParentInput): Promise<CreatedAccount & { guardianId: string }> {
+  const schoolId = requireSchool(session);
+  if (!input.firstName?.trim() || !input.lastName?.trim() || !input.email?.trim()) throw new Error("INVALID");
+
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
+
+  const user = await prisma.user.create({
+    data: {
+      schoolId,
+      email: input.email.trim().toLowerCase(),
+      passwordHash,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      locale: "en",
+      theme: "light",
+      isActive: true,
+      mustReset: true,
+      roles: { create: { roleCode: ROLES.PARENT, schoolId } },
+      guardian: { create: { schoolId, preferredContact: "EMAIL", status: "ACTIVE" } },
+    },
+    select: { id: true, guardian: { select: { id: true } } },
+  }).catch((error) => {
+    if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+    throw error;
+  });
+
+  let linked = 0;
+  for (const studentId of input.studentIds ?? []) {
+    const student = await prisma.student.findFirst({
+      where: { id: studentId, schoolId },
+      select: { id: true },
+    });
+    if (!student) continue;
+    await prisma.parentStudentRelationship.create({
+      data: { guardianId: user.guardian.id, studentId: student.id, relationship: input.relationship || "PARENT", isPrimary: false },
+    });
+    linked += 1;
+  }
+
+  await audit(session, { action: "PARENT.CREATED", entityType: "Guardian", entityId: user.guardian.id, metadata: { linked } });
+
+  return { userId: user.id, guardianId: user.guardian.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
+}
+
+// ---------------------------------------------------------------------------
+// Teachers
+// ---------------------------------------------------------------------------
+
+export type CreateTeacherInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  title?: string;
+  specialtyCode?: string | null;
+  classIds?: string[];
+};
+
+export async function createTeacher(session: SessionPayload, input: CreateTeacherInput): Promise<CreatedAccount> {
+  const schoolId = requireSchool(session);
+  if (!input.firstName?.trim() || !input.lastName?.trim() || !input.email?.trim()) throw new Error("INVALID");
+
+  const employeeNumber = await nextSequenceNumber(schoolId, "EMP");
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
+
+  const user = await prisma.user.create({
+    data: {
+      schoolId,
+      email: input.email.trim().toLowerCase(),
+      passwordHash,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      locale: "en",
+      theme: "dark",
+      isActive: true,
+      mustReset: true,
+      roles: { create: { roleCode: ROLES.TEACHER, schoolId } },
+      teacher: { create: { schoolId, employeeNumber, title: input.title || "Mr.", specialties: input.specialtyCode || null, status: "ACTIVE" } },
+    },
+    select: { id: true, teacher: { select: { id: true } } },
+  }).catch((error) => {
+    if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+    throw error;
+  });
+
+  for (const classId of input.classIds ?? []) {
+    const cls = await prisma.schoolClass.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+    if (!cls) continue;
+    await prisma.teacherClassAssignment.create({
+      data: { teacherId: user.teacher.id, classId: cls.id, isHomeroom: false, role: "SUBJECT_TEACHER" },
+    });
+  }
+
+  await audit(session, { action: "TEACHER.CREATED", entityType: "Teacher", entityId: user.teacher.id, metadata: { employeeNumber, classes: (input.classIds ?? []).length } });
+
+  return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
+}
+
+// ---------------------------------------------------------------------------
+// Classes + teacher assignments + timetable
+// ---------------------------------------------------------------------------
+
+export type CreateClassInput = {
   name: string;
   gradeLevel: string;
-  students: number;
-  attendance: number | null;
-  homework: number | null;
-  engagement: number | null;
-  positive: number;
-  attention: number;
+  section?: string | null;
+  room?: string | null;
+  capacity?: number;
+  homeroomTeacherId?: string | null;
 };
 
-export type RecentExport = {
-  id: string;
-  actorName: string | null;
-  createdAt: string;
-};
+export async function createClass(session: SessionPayload, input: CreateClassInput) {
+  const schoolId = requireClassManage(session);
+  if (!input.name?.trim() || !input.gradeLevel?.trim()) throw new Error("INVALID");
 
-export type ReportsData = {
-  templates: typeof REPORT_TEMPLATES;
-  metrics: { templates: number; generatedMonth: number; classesReady: number };
-  classes: ClassReportSummary[];
-  exports: RecentExport[];
-};
+  const yearId = await currentAcademicYear(schoolId);
+  const campus = await prisma.campus.findFirst({ where: { schoolId }, select: { id: true }, orderBy: { isMain: "desc" } });
 
-const emptyReports: ReportsData = {
-  templates: REPORT_TEMPLATES,
-  metrics: { templates: REPORT_TEMPLATES.length, generatedMonth: 0, classesReady: 0 },
-  classes: [],
-  exports: [],
-};
-
-export async function getReports(session: SessionPayload): Promise<ReportsData> {
-  if (!can(session, "reports:export")) return emptyReports;
-
-  const scope = await scopeStudentIds(session);
-  const students = await prisma.student.findMany({
-    where: studentWhereIn(scope),
-    select: {
-      id: true,
-      currentClass: { select: { id: true, name: true, gradeLevel: true } },
-      user: { select: { firstName: true, lastName: true } },
+  const cls = await prisma.schoolClass.create({
+    data: {
+      schoolId,
+      campusId: campus?.id ?? null,
+      academicYearId: yearId,
+      name: input.name.trim(),
+      gradeLevel: input.gradeLevel.trim(),
+      section: input.section?.trim() || null,
+      room: input.room?.trim() || null,
+      capacity: input.capacity || 30,
     },
-  });
-  const ids = students.map((s) => s.id);
-
-  const snaps =
-    ids.length > 0
-      ? await prisma.studentIndicatorSnapshot.findMany({
-          where: { studentId: { in: ids }, granularity: "WEEK" },
-          select: {
-            studentId: true,
-            periodStart: true,
-            academic: true,
-            attendance: true,
-            homework: true,
-            engagement: true,
-            motivation: true,
-            wellbeing: true,
-          },
-          orderBy: { periodStart: "asc" },
-        })
-      : [];
-
-  const latest = new Map<string, (typeof snaps)[number]>();
-  snaps.forEach((s) => {
-    if (!latest.has(s.studentId) || s.periodStart > latest.get(s.studentId)!.periodStart) latest.set(s.studentId, s);
+    select: { id: true, name: true },
+  }).catch((error) => {
+    if (isUniqueViolation(error)) throw new Error("CLASS_TAKEN");
+    throw error;
   });
 
-  const byClass = new Map<string, { id: string; name: string; gradeLevel: string; studentIds: string[] }>();
-  students.forEach((s) => {
-    const classId = s.currentClass?.id;
-    if (!classId) return;
-    const entry = byClass.get(classId) ?? { id: classId, name: s.currentClass!.name, gradeLevel: s.currentClass!.gradeLevel, studentIds: [] };
-    entry.studentIds.push(s.id);
-    byClass.set(classId, entry);
-  });
-
-  const classes: ClassReportSummary[] = [...byClass.values()].map((c) => {
-    const classSnaps = c.studentIds.map((id) => latest.get(id)).filter((s): s is NonNullable<typeof s> => Boolean(s));
-    const signals = c.studentIds.map((id) => {
-      const snap = latest.get(id);
-      return snap
-        ? signalFor({
-            attendance: snap.attendance,
-            academic: snap.academic,
-            homework: snap.homework,
-            motivation: snap.motivation,
-            wellbeing: snap.wellbeing,
-            engagement: snap.engagement,
-          })
-        : "STABLE";
+  if (input.homeroomTeacherId) {
+    const teacher = await prisma.teacher.findFirst({
+      where: { id: input.homeroomTeacherId, schoolId },
+      select: { id: true },
     });
-    return {
-      classId: c.id,
-      name: c.name,
-      gradeLevel: c.gradeLevel,
-      students: c.studentIds.length,
-      attendance: avg(classSnaps.map((s) => s.attendance)) === null ? null : round(avg(classSnaps.map((s) => s.attendance)), 0),
-      homework: avg(classSnaps.map((s) => s.homework)) === null ? null : round(avg(classSnaps.map((s) => s.homework)), 0),
-      engagement: avg(classSnaps.map((s) => s.engagement)) === null ? null : round(avg(classSnaps.map((s) => s.engagement)), 0),
-      positive: signals.filter((x) => x === "POSITIVE").length,
-      attention: signals.filter((x) => x === "ATTENTION" || x === "WATCH").length,
-    };
+    if (teacher) {
+      await prisma.teacherClassAssignment.create({
+        data: { teacherId: teacher.id, classId: cls.id, isHomeroom: true, role: "HOMEROOM" },
+      });
+    }
+  }
+
+  await audit(session, { action: "CLASS.CREATED", entityType: "SchoolClass", entityId: cls.id, metadata: { name: cls.name } });
+  return { ok: true, id: cls.id, name: cls.name };
+}
+
+export type AssignTeacherInput = {
+  teacherId: string;
+  classId: string;
+  subjectId?: string | null;
+  role?: string;
+};
+
+export async function assignTeacherToClass(session: SessionPayload, input: AssignTeacherInput) {
+  const schoolId = requireClassManage(session);
+  const teacher = await prisma.teacher.findFirst({ where: { id: input.teacherId, schoolId }, select: { id: true } });
+  const cls = await prisma.schoolClass.findFirst({ where: { id: input.classId, schoolId }, select: { id: true } });
+  if (!teacher || !cls) throw new Error("NOT_FOUND");
+
+  if (input.subjectId) {
+    const subject = await prisma.subject.findFirst({ where: { id: input.subjectId, schoolId }, select: { id: true } });
+    if (!subject) throw new Error("NOT_FOUND");
+  }
+
+  const existing = await prisma.teacherClassAssignment.findFirst({
+    where: { teacherId: teacher.id, classId: cls.id, subjectId: input.subjectId ?? null },
+    select: { id: true },
+  });
+  if (existing) throw new Error("DUPLICATE");
+
+  const created = await prisma.teacherClassAssignment.create({
+    data: {
+      teacherId: teacher.id,
+      classId: cls.id,
+      subjectId: input.subjectId ?? null,
+      role: input.role ?? "SUBJECT_TEACHER",
+      isHomeroom: input.role === "HOMEROOM",
+    },
+    select: { id: true },
   });
 
-  const monthAgo = addDays(startOfDay(new Date()), -30);
-  const [exportsMonth, recentExports] = await Promise.all([
-    prisma.auditLog.count({ where: { ...auditScopeWhere(session), action: "EXPORT_REPORT", createdAt: { gte: monthAgo } } }),
-    prisma.auditLog.findMany({
-      where: { ...auditScopeWhere(session), action: "EXPORT_REPORT" },
-      orderBy: { createdAt: "desc" },
-      take: 15,
-      include: { actor: { select: { firstName: true, lastName: true } } },
-    }),
-  ]);
-
-  return {
-    templates: REPORT_TEMPLATES,
-    metrics: { templates: REPORT_TEMPLATES.length, generatedMonth: exportsMonth, classesReady: classes.length },
-    classes,
-    exports: recentExports.map((e) => ({
-      id: e.id,
-      actorName: e.actor ? fullName(e.actor) : null,
-      createdAt: e.createdAt.toISOString(),
-    })),
-  };
+  await audit(session, { action: "TEACHER.ASSIGNED", entityType: "TeacherClassAssignment", entityId: created.id, metadata: { teacherId: teacher.id, classId: cls.id } });
+  return { ok: true, id: created.id };
 }
 
-// ---------------------------------------------------------------------------
-// Configuration
-// ---------------------------------------------------------------------------
+export async function unassignTeacherFromClass(session: SessionPayload, assignmentId: string) {
+  const schoolId = requireClassManage(session);
+  const assignment = await prisma.teacherClassAssignment.findFirst({
+    where: { id: assignmentId, class: { schoolId } },
+    select: { id: true },
+  });
+  if (!assignment) throw new Error("NOT_FOUND");
+  await prisma.teacherClassAssignment.delete({ where: { id: assignment.id } });
+  await audit(session, { action: "TEACHER.UNASSIGNED", entityType: "TeacherClassAssignment", entityId: assignment.id });
+  return { ok: true };
+}
 
-export type ConfigField = {
-  name: string;
-  label: string;
-  type: "text" | "select" | "number" | "checkboxes";
-  options?: string[];
-  value?: string;
-  checked?: string[];
+export type TimetableSlotInput = {
+  classId: string;
+  dayOfWeek: number;
+  startTime: string;
+  endTime: string;
+  subjectId?: string | null;
+  teacherId?: string | null;
+  room?: string | null;
 };
 
-export type ConfigSection = {
-  key: string | null;
-  label: string;
-  summary: string;
-  description: string;
-  rows: { label: string; value: string }[];
-  fields: ConfigField[];
-};
+export async function saveTimetableSlot(session: SessionPayload, input: TimetableSlotInput) {
+  const schoolId = requireClassManage(session);
+  if (!input.classId || !input.dayOfWeek || !input.startTime || !input.endTime) throw new Error("INVALID");
 
-export type ConfigurationOverview = {
-  academicYear: string | null;
-  terms: string[];
-  classes: number;
-  subjects: number;
-  competencies: number;
-  students: number;
-};
+  const cls = await prisma.schoolClass.findFirst({ where: { id: input.classId, schoolId }, select: { id: true } });
+  if (!cls) throw new Error("NOT_FOUND");
 
-export type ConfigurationData = {
-  available: boolean;
-  schoolName: string | null;
-  overview: ConfigurationOverview | null;
-  sections: ConfigSection[];
-};
-
-function configOrDefault(configs: SchoolConfig[], key: string, fallback: unknown) {
-  const row = configs.find((c) => c.key === key);
-  if (!row) return fallback;
-  try {
-    return JSON.parse(row.value);
-  } catch {
-    return fallback;
+  if (input.subjectId) {
+    const subject = await prisma.subject.findFirst({ where: { id: input.subjectId, schoolId }, select: { id: true } });
+    if (!subject) throw new Error("NOT_FOUND");
   }
+  if (input.teacherId) {
+    const teacher = await prisma.teacher.findFirst({ where: { id: input.teacherId, schoolId }, select: { id: true } });
+    if (!teacher) throw new Error("NOT_FOUND");
+  }
+
+  const slot = await prisma.timetableSlot.create({
+    data: {
+      classId: cls.id,
+      dayOfWeek: input.dayOfWeek,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      subjectId: input.subjectId ?? null,
+      teacherId: input.teacherId ?? null,
+      room: input.room?.trim() || null,
+    },
+    select: { id: true },
+  });
+
+  await audit(session, { action: "TIMETABLE.CREATED", entityType: "TimetableSlot", entityId: slot.id, metadata: { classId: cls.id, dayOfWeek: input.dayOfWeek } });
+  return { ok: true, id: slot.id };
 }
 
-export async function getConfiguration(session: SessionPayload): Promise<ConfigurationData> {
-  if (!can(session, "school:configure")) return { available: false, schoolName: null, overview: null, sections: [] };
-  const schoolId = session.schoolId;
-  if (!schoolId) return { available: false, schoolName: null, overview: null, sections: [] };
+export async function deleteTimetableSlot(session: SessionPayload, id: string) {
+  const schoolId = requireClassManage(session);
+  const slot = await prisma.timetableSlot.findFirst({
+    where: { id, class: { schoolId } },
+    select: { id: true },
+  });
+  if (!slot) throw new Error("NOT_FOUND");
+  await prisma.timetableSlot.delete({ where: { id: slot.id } });
+  await audit(session, { action: "TIMETABLE.DELETED", entityType: "TimetableSlot", entityId: slot.id });
+  return { ok: true };
+}
 
-  const [school, currentYear, classes, subjects, competencies, students, configs] = await Promise.all([
-    prisma.school.findUnique({ where: { id: schoolId }, select: { name: true, defaultLocale: true, supportedLocales: true } }),
-    prisma.academicYear.findFirst({ where: { schoolId, isCurrent: true }, include: { terms: { orderBy: { sequence: "asc" } } } }),
-    prisma.schoolClass.findMany({ where: { schoolId }, orderBy: { gradeOrder: "asc" }, select: { id: true, name: true, gradeLevel: true, capacity: true } }),
-    prisma.subject.findMany({ where: { schoolId }, orderBy: { name: "asc" }, select: { id: true, name: true, code: true, color: true } }),
-    prisma.competency.findMany({ where: { schoolId, isActive: true }, orderBy: { order: "asc" }, select: { id: true, name: true, category: true } }),
-    prisma.student.count({ where: { schoolId, status: "ACTIVE" } }),
-    prisma.schoolConfig.findMany({ where: { schoolId } }),
-  ]);
-
-  const grading = configOrDefault(configs, "GRADING_SYSTEM", { scale: "NUMERIC_20", pass: "10", max: "20" }) as Record<string, unknown>;
-  const attendanceTypes = configOrDefault(configs, "ATTENDANCE_TYPES", { types: ["PRESENT", "ABSENT", "LATE", "EXCUSED"] }) as Record<string, unknown>;
-  const checkinQuestions = configOrDefault(configs, "CHECKIN_QUESTIONS", { dimensions: ["Mood", "Energy", "Motivation", "Workload", "Understanding"] }) as Record<string, unknown>;
-  const alertThresholds = configOrDefault(configs, "ALERT_THRESHOLDS", { rule: "Help request signal", severity: "Medium", threshold: "3" }) as Record<string, unknown>;
-  const parentVisibility = configOrDefault(configs, "PARENT_VISIBILITY", { overall: "Balanced", visible: ["Grades", "Attendance", "Homework"], notify: ["Low grades", "Absences"] }) as Record<string, unknown>;
-  const languages = configOrDefault(configs, "LANGUAGES", { locales: (school?.supportedLocales ?? "en,fr,ar").split(","), default: school?.defaultLocale ?? "en" }) as Record<string, unknown>;
-
-  const asStrings = (value: unknown): string[] => (Array.isArray(value) ? value.filter((v): v is string => typeof v === "string") : []);
-  const str = (value: unknown): string => (typeof value === "string" ? value : String(value ?? ""));
-
-  const termRows = (currentYear?.terms ?? []).map((term) => ({
-    label: term.name,
-    value: `${term.startDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })} – ${term.endDate.toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}${term.isCurrent ? " · Current" : ""}`,
-  }));
-
-  const sections: ConfigSection[] = [
-    {
-      key: null,
-      label: "Academic years",
-      summary: currentYear?.name ?? "—",
-      description: "Calendar, terms and current period",
-      rows: [
-        { label: "Current academic year", value: currentYear?.name ?? "—" },
-        ...termRows,
-        { label: "Active classes", value: String(classes.length) },
-        { label: "Active students", value: String(students) },
-      ],
-      fields: [],
-    },
-    {
-      key: null,
-      label: "Classes and grades",
-      summary: `${classes.length} classes · ${[...new Set(classes.map((c) => c.gradeLevel))].join(", ")}`,
-      description: "Capacity, rooms and homeroom teachers",
-      rows: classes.map((c) => ({ label: `${c.gradeLevel} ${c.name}`, value: `Capacity ${c.capacity}` })),
-      fields: [],
-    },
-    {
-      key: null,
-      label: "Subjects",
-      summary: `${subjects.length} active subjects`,
-      description: "Names, codes, colours and ordering",
-      rows: subjects.map((s) => ({ label: s.name, value: s.code })),
-      fields: [],
-    },
-    {
-      key: null,
-      label: "Competencies",
-      summary: `${competencies.length} active competencies`,
-      description: "School-specific competency framework",
-      rows: competencies.map((c) => ({ label: c.name, value: c.category })),
-      fields: [],
-    },
-    {
-      key: "GRADING_SYSTEM",
-      label: "Grading system",
-      summary: str(grading.scale),
-      description: "Multiple systems supported",
-      rows: [],
-      fields: [
-        { name: "scale", label: "Scale type", type: "select", options: ["NUMERIC_20", "NUMERIC_100", "LETTER", "COMPETENCY_4"], value: str(grading.scale) },
-        { name: "pass", label: "Passing grade", type: "number", value: str(grading.pass) },
-        { name: "max", label: "Max grade", type: "number", value: str(grading.max) },
-      ],
-    },
-    {
-      key: "ATTENDANCE_TYPES",
-      label: "Attendance types",
-      summary: `${asStrings(attendanceTypes.types).length} active types`,
-      description: "Present, absent, late and excused",
-      rows: [],
-      fields: [
-        { name: "types", label: "Active types", type: "checkboxes", options: ["PRESENT", "ABSENT", "LATE", "EXCUSED"], checked: asStrings(attendanceTypes.types) },
-      ],
-    },
-    {
-      key: "CHECKIN_QUESTIONS",
-      label: "Check-in questions",
-      summary: `${asStrings(checkinQuestions.dimensions).length} daily dimensions`,
-      description: "Mood, energy, motivation, workload and understanding",
-      rows: [],
-      fields: [
-        { name: "dimensions", label: "Active dimensions", type: "checkboxes", options: ["Mood", "Energy", "Motivation", "Workload", "Understanding"], checked: asStrings(checkinQuestions.dimensions) },
-      ],
-    },
-    {
-      key: "ALERT_THRESHOLDS",
-      label: "Alert thresholds",
-      summary: str(alertThresholds.rule),
-      description: "Signal timing and evidence thresholds",
-      rows: [],
-      fields: [
-        { name: "rule", label: "Rule name", type: "text", value: str(alertThresholds.rule) },
-        { name: "severity", label: "Severity", type: "select", options: ["Low", "Medium", "High", "Critical"], value: str(alertThresholds.severity) },
-        { name: "threshold", label: "Evidence threshold", type: "number", value: str(alertThresholds.threshold) },
-      ],
-    },
-    {
-      key: "PARENT_VISIBILITY",
-      label: "Parent visibility",
-      summary: str(parentVisibility.overall),
-      description: "Fine-grained per-data-type controls",
-      rows: [],
-      fields: [
-        { name: "overall", label: "Overall visibility", type: "select", options: ["Minimal", "Balanced", "Full"], value: str(parentVisibility.overall) },
-        { name: "visible", label: "Visible data types", type: "checkboxes", options: ["Grades", "Attendance", "Homework", "Behaviour", "Check-ins", "Messages"], checked: asStrings(parentVisibility.visible) },
-        { name: "notify", label: "Always notify parent for", type: "checkboxes", options: ["Low grades", "Absences", "Behaviour alerts", "All changes"], checked: asStrings(parentVisibility.notify) },
-      ],
-    },
-    {
-      key: "LANGUAGES",
-      label: "Languages",
-      summary: (school?.supportedLocales ?? "en,fr,ar").toUpperCase().replaceAll(",", ", "),
-      description: "RTL prepared for Arabic",
-      rows: [],
-      fields: [
-        { name: "locales", label: "Enabled languages", type: "checkboxes", options: ["en", "fr", "ar"], checked: asStrings(languages.locales) },
-        { name: "default", label: "Default language", type: "select", options: ["en", "fr", "ar"], value: str(languages.default) },
-      ],
-    },
-  ];
-
-  return {
-    available: true,
-    schoolName: school?.name ?? null,
-    overview: {
-      academicYear: currentYear?.name ?? null,
-      terms: (currentYear?.terms ?? []).map((t) => t.name),
-      classes: classes.length,
-      subjects: subjects.length,
-      competencies: competencies.length,
-      students,
-    },
-    sections,
-  };
+export function isAdminActionError(error: unknown) {
+  return typeof error === "string" && ["FORBIDDEN", "INVALID", "NOT_FOUND", "DUPLICATE", "EMAIL_TAKEN", "CLASS_TAKEN", "NO_ACADEMIC_YEAR"].includes(error);
 }

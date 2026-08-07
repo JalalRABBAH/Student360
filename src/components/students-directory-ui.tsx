@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
-import type { ChildCard, ClassCard, SchoolOverview, StudentRosterEntry, TeacherEntry } from "@/lib/students/service";
+import { AdminClassesPanel, AdminParentsPanel, AdminStudentsPanel, AdminTeachersPanel } from "@/components/admin-panels";
+import type { AdminPanelsData } from "@/lib/admin/panels-data";import type { ChildCard, ClassCard, SchoolOverview, StudentRosterEntry, TeacherEntry } from "@/lib/students/service";
 
 const SIGNAL_TONE = { POSITIVE: "positive", STABLE: "neutral", WATCH: "watch", ATTENTION: "attention" } as const;
 const SIGNAL_LABEL = {
@@ -30,7 +31,7 @@ function signalLabel(signal: string) {
 // Students directory
 // ---------------------------------------------------------------------------
 
-export function StudentsPage({ students }: { students: StudentRosterEntry[] }) {
+export function StudentsPage({ students, admin }: { students: StudentRosterEntry[]; admin?: AdminPanelsData }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("All");
@@ -43,9 +44,17 @@ export function StudentsPage({ students }: { students: StudentRosterEntry[] }) {
   const avgAcademic = students.length ? Math.round(students.reduce((sum, s) => sum + s.academic, 0) / students.length) : 0;
   const avgAttendance = students.length ? Math.round(students.reduce((sum, s) => sum + s.attendance, 0) / students.length) : 0;
 
+  const canManage = Boolean(admin?.canManage);
+
   return (
     <div className="space-y-6">
       <PageHeader title={t("Students")} description={t("Search the school roster and open a complete Student 360 profile.")} />
+      {canManage ? (
+        <div className="space-y-4">
+          <AdminStudentsPanel classes={admin!.classes} students={admin!.students} />
+          <AdminParentsPanel students={admin!.students} />
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label={t("Students")} value={students.length} detail={t("Active roster")} icon={Users} />
         <MetricCard label={t("Academic average")} value={`${avgAcademic}%`} detail={t("Across the roster")} icon={GraduationCap} tone="sky" />
@@ -80,7 +89,7 @@ export function StudentsPage({ students }: { students: StudentRosterEntry[] }) {
 // Classes directory
 // ---------------------------------------------------------------------------
 
-export function ClassesPage({ classes }: { classes: ClassCard[] }) {
+export function ClassesPage({ classes, admin }: { classes: ClassCard[]; admin?: AdminPanelsData }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const [grade, setGrade] = useState("All grades");
@@ -92,10 +101,12 @@ export function ClassesPage({ classes }: { classes: ClassCard[] }) {
   const studentCount = classes.reduce((sum, c) => sum + c.studentCount, 0);
   const avgAttendance = classes.length ? Math.round(classes.reduce((sum, c) => sum + c.attendance, 0) / classes.length) : 0;
   const avgEngagement = classes.length ? Math.round(classes.reduce((sum, c) => sum + c.engagement, 0) / classes.length) : 0;
+  const canManage = Boolean(admin?.canManage);
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("Classes")} description={t("Browse every class, compare key indicators and open the visual student squad.")} />
+      {canManage ? <AdminClassesPanel teachers={admin!.teachers} assignments={admin!.assignments} /> : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label={t("Active classes")} value={classes.length} detail={t("Grades 7 to 9")} icon={School} />
         <MetricCard label={t("Students")} value={studentCount} detail={t("Across active classes")} icon={Users} tone="sky" />
@@ -126,16 +137,18 @@ export function ClassesPage({ classes }: { classes: ClassCard[] }) {
 // Teachers directory
 // ---------------------------------------------------------------------------
 
-export function TeachersPage({ teachers }: { teachers: TeacherEntry[] }) {
+export function TeachersPage({ teachers, admin }: { teachers: TeacherEntry[]; admin?: AdminPanelsData }) {
   const { t } = useI18n();
   const [query, setQuery] = useState("");
   const visible = teachers.filter((teacher) => `${teacher.name} ${teacher.title} ${teacher.email} ${teacher.classNames.join(" ")} ${teacher.specialties.join(" ")}`.toLowerCase().includes(query.trim().toLowerCase()));
   const homeroomCount = teachers.filter((teacher) => teacher.isHomeroom).length;
   const totalAssignments = teachers.reduce((sum, teacher) => sum + teacher.classCount, 0);
+  const canManage = Boolean(admin?.canManage);
 
   return (
     <div className="space-y-6">
       <PageHeader title={t("Teachers")} description={t("Staff directory, class assignments and teaching load.")} />
+      {canManage ? <AdminTeachersPanel classes={admin!.classes} teachers={admin!.teachers} subjects={admin!.subjects} /> : null}
       <div className="grid gap-4 sm:grid-cols-3">
         <MetricCard label={t("Teachers")} value={teachers.length} detail={t("All active")} icon={GraduationCap} />
         <MetricCard label={t("Homeroom teachers")} value={homeroomCount} detail={t("One per class")} icon={Users} tone="sky" />

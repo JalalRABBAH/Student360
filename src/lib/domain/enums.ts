@@ -350,6 +350,7 @@ export const EVENT_TYPE_LABELS: Record<string, string> = {
   ACHIEVEMENT: "Achievement",
   MESSAGE: "Message",
   ALERT: "Signal",
+  ACTION: "Action",
 };
 
 export const EVENT_TYPE_ICONS: Record<string, string> = {
@@ -366,6 +367,7 @@ export const EVENT_TYPE_ICONS: Record<string, string> = {
   ACHIEVEMENT: "trophy",
   MESSAGE: "message-square",
   ALERT: "activity",
+  ACTION: "check-circle",
 };
 
 // ---------------------------------------------------------------------------
@@ -542,3 +544,129 @@ export const CONSENT_TYPE_LABELS: Record<string, string> = {
   FIELD_TRIP: "Field trips & outings",
   MEDICAL_EMERGENCY: "Emergency medical care",
 };
+
+// ---------------------------------------------------------------------------
+// Actions — recurring mandatory/optional tasks (socle administration)
+// ---------------------------------------------------------------------------
+
+export const ACTION_SOURCES = {
+  ADMIN: "ADMIN",
+  APP: "APP",
+  TEACHER: "TEACHER",
+} as const;
+
+export type ActionSource = (typeof ACTION_SOURCES)[keyof typeof ACTION_SOURCES];
+
+export const ACTION_SOURCE_LABELS: Record<string, string> = {
+  ADMIN: "Set by administration",
+  APP: "Suggested by the app",
+  TEACHER: "Set by a teacher",
+};
+
+export const ACTION_TARGET_ROLES = ["TEACHER", "STUDENT", "PARENT"] as const;
+export type ActionTargetRole = (typeof ACTION_TARGET_ROLES)[number];
+
+export const ACTION_TARGET_ROLE_LABELS: Record<string, string> = {
+  TEACHER: "Teachers",
+  STUDENT: "Students",
+  PARENT: "Parents",
+};
+
+export const ACTION_REQUIRED = {
+  MANDATORY: "MANDATORY",
+  OPTIONAL: "OPTIONAL",
+} as const;
+
+export const ACTION_REQUIRED_LABELS: Record<string, string> = {
+  MANDATORY: "Mandatory",
+  OPTIONAL: "Optional",
+};
+
+export const ACTION_FREQUENCIES = {
+  DAILY: "DAILY",
+  WEEKLY: "WEEKLY",
+  MONTHLY: "MONTHLY",
+  ONE_OFF: "ONE_OFF",
+} as const;
+
+export const ACTION_FREQUENCY_LABELS: Record<string, string> = {
+  DAILY: "Every day",
+  WEEKLY: "Every week",
+  MONTHLY: "Every month",
+  ONE_OFF: "Once",
+};
+
+export const ACTION_STATUS = {
+  PENDING: "PENDING",
+  DONE: "DONE",
+  SKIPPED: "SKIPPED",
+} as const;
+
+export const ACTION_STATUS_LABELS: Record<string, string> = {
+  PENDING: "To do",
+  DONE: "Done",
+  SKIPPED: "Skipped",
+};
+
+export const ACTION_STATUS_TONE: Record<string, "positive" | "neutral" | "warning" | "attention"> = {
+  DONE: "positive",
+  PENDING: "warning",
+  SKIPPED: "neutral",
+};
+
+/** App-built templates offered to every new school (seed / first activation). */
+export const DEFAULT_ACTION_TEMPLATES: Array<{
+  code: string;
+  title: string;
+  titleKey: string;
+  description?: string;
+  targetRole: ActionTargetRole;
+  required: string;
+  frequency: string;
+}> = [
+  {
+    code: "ATTENDANCE_DAILY",
+    title: "Mark daily attendance",
+    titleKey: "action.defaults.attendance",
+    description: "Record who is present in each class every day.",
+    targetRole: "TEACHER",
+    required: "MANDATORY",
+    frequency: "DAILY",
+  },
+  {
+    code: "CHECKIN_WEEKLY",
+    title: "Share your weekly check-in",
+    titleKey: "action.defaults.checkin",
+    description: "A quick mood and energy check keeps the class connected.",
+    targetRole: "STUDENT",
+    required: "OPTIONAL",
+    frequency: "WEEKLY",
+  },
+  {
+    code: "HOMEWORK_WEEKLY",
+    title: "Finish your homework for this week",
+    titleKey: "action.defaults.homework",
+    description: "Hand in the assignments that are due this week.",
+    targetRole: "STUDENT",
+    required: "OPTIONAL",
+    frequency: "WEEKLY",
+  },
+  {
+    code: "PARENT_UPDATE_WEEKLY",
+    title: "Share a weekly update with the school",
+    titleKey: "action.defaults.parent.update",
+    description: "Homework support, observations or a short note for the teacher.",
+    targetRole: "PARENT",
+    required: "OPTIONAL",
+    frequency: "WEEKLY",
+  },
+  {
+    code: "PARENT_REPORT_MONTHLY",
+    title: "Send the monthly family report",
+    titleKey: "action.defaults.parent.report",
+    description: "A concise progress summary for the families of your class.",
+    targetRole: "TEACHER",
+    required: "MANDATORY",
+    frequency: "MONTHLY",
+  },
+];

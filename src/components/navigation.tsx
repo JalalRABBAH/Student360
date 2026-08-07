@@ -17,6 +17,7 @@ import {
   Target,
   Sparkles,
   Bell,
+  CheckCircle2,
   type LucideIcon,
 } from "lucide-react";
 import type { NavItem } from "@/components/sidebar-item";
@@ -40,7 +41,8 @@ export type IconName =
   | "Clock"
   | "Target"
   | "Sparkles"
-  | "Bell";
+  | "Bell"
+  | "CheckCircle2";
 
 export const iconMap: Record<IconName, LucideIcon> = {
   LayoutDashboard,
@@ -61,6 +63,7 @@ export const iconMap: Record<IconName, LucideIcon> = {
   Target,
   Sparkles,
   Bell,
+  CheckCircle2,
 };
 
 type NavSpec = { label: string; href: string; icon: IconName; badge?: number | string };
@@ -74,6 +77,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
         { label: "Today", href: "/today", icon: "CalendarDays" },
         { label: "My Classes", href: "/classes", icon: "School" },
         { label: "Students", href: "/students", icon: "GraduationCap" },
+        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
       ],
     },
     {
@@ -104,6 +108,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
         { label: "Goals", href: "/goals", icon: "Target" },
         { label: "Feedback", href: "/feedback", icon: "HeartHandshake" },
         { label: "Achievements", href: "/achievements", icon: "Trophy" },
+        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
       ],
     },
     {
@@ -123,6 +128,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
         { label: "Today", href: "/today", icon: "CalendarDays" },
         { label: "Homework", href: "/homework", icon: "BookOpen" },
         { label: "Progress", href: "/progress", icon: "BarChart3" },
+        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
       ],
     },
     {
@@ -159,6 +165,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
         { label: "Classes", href: "/classes", icon: "Users" },
         { label: "Students", href: "/students", icon: "GraduationCap" },
         { label: "Teachers", href: "/teachers", icon: "BookOpen" },
+        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
       ],
     },
     {
@@ -192,6 +199,7 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
         { label: "Classes", href: "/classes", icon: "Users" },
         { label: "Students", href: "/students", icon: "GraduationCap" },
         { label: "Teachers", href: "/teachers", icon: "BookOpen" },
+        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
         { label: "Messages", href: "/messages", icon: "MessageSquare" },
       ],
     },

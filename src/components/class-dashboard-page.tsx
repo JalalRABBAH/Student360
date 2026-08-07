@@ -7,13 +7,15 @@ import { InsightCard, MetricCard, PageHeader, ProgressBar, StatusBadge, StudentA
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
+import { ClassTimetablePanel } from "@/components/admin-panels";
 import type { ClassDetail } from "@/lib/students/service";
+import type { AdminClassDetail } from "@/lib/admin/panels-data";
 
 const modes = ["Overview", "Attendance", "Homework", "Engagement", "Signals"] as const;
 
 const SIGNAL_TONE = { POSITIVE: "positive", STABLE: "neutral", WATCH: "watch", ATTENTION: "attention" } as const;
 
-export function ClassDashboardPage({ schoolClass }: { schoolClass: ClassDetail }) {
+export function ClassDashboardPage({ schoolClass, admin }: { schoolClass: ClassDetail; admin?: AdminClassDetail }) {
   const { t, href } = useI18n();
   const [mode, setMode] = useState<(typeof modes)[number]>("Overview");
 
@@ -65,6 +67,7 @@ export function ClassDashboardPage({ schoolClass }: { schoolClass: ClassDetail }
         {attentionCount + watchCount > 0 ? <InsightCard title={t("Attention suggested")} reasons={[t(`${attentionCount + watchCount} students show combined weak signals`), t("Reasons are available in each profile")]} /> : null}
         <Card className="p-4"><div className="flex gap-3"><div className="rounded-lg bg-sky-50 p-2 text-sky-600 dark:bg-sky-500/10"><Eye className="h-4 w-4" /></div><div><div className="text-sm font-bold">{t("Privacy reminder")}</div><p className="mt-1 text-xs text-slate-500">{t("Sensitive wellbeing entries are visible only to authorised roles.")}</p></div></div></Card>
       </div>
+      {admin?.canManage ? <ClassTimetablePanel classId={schoolClass.id} subjects={admin.subjects} teachers={admin.teachers} slots={admin.slots} /> : null}
     </div>
   );
 }

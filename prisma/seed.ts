@@ -279,6 +279,7 @@ async function seedStaff(ctx: SchoolContext) {
     { code: ROLES.NURSE, name: "School Nurse", rank: 35 },
     { code: ROLES.ADMIN, name: "School Administration", rank: 40 },
     { code: ROLES.PRINCIPAL, name: "School Management", rank: 50 },
+    { code: ROLES.SCHOOL_MANAGER, name: "School Group Manager", rank: 90 },
     { code: ROLES.SUPER_ADMIN, name: "Platform Administrator", rank: 100 },
   ];
   await prisma.role.createMany({ data: roles });

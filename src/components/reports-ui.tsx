@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/i18n/provider";
 import { intlLocale } from "@/i18n/config";
-import { REPORT_SCOPE_LABELS, type ReportsData } from "@/lib/admin/service";
+import { REPORT_SCOPE_LABELS, type ReportsData } from "@/lib/admin/reports-data";
 
 export function ReportsPage({ data }: { data: ReportsData }) {
   const { t, locale } = useI18n();

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
-import type { ConfigField, ConfigSection, ConfigurationData } from "@/lib/admin/service";
+import type { ConfigField, ConfigSection, ConfigurationData } from "@/lib/admin/reports-data";
 
 export function ConfigurationPage({ data }: { data: ConfigurationData }) {
   const { t } = useI18n();

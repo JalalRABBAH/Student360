@@ -1,5 +1,5 @@
 import { requireCapability } from "@/lib/auth/server";
-import { getReports } from "@/lib/admin/service";
+import { getReports } from "@/lib/admin/reports-service";
 import { ReportsPage } from "@/components/reports-ui";
 
 export default async function Page() {

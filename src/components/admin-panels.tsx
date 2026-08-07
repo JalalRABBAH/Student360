@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CalendarDays, Loader2, Plus, Trash2, UserCog, UserPlus, Users } from "lucide-react";
+import { Building2, CalendarDays, Loader2, Pencil, Plus, Trash2, UserCog, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -539,7 +539,7 @@ export function AdminEstablishmentsPanel() {
       setName(""); setCity("");
       router.refresh();
     } else {
-      setError("Could not create the establishment");
+      setError(data.code === "NAME_TAKEN" ? "Name already used" : "Could not create the establishment");
     }
   }
 
@@ -566,6 +566,93 @@ export function AdminEstablishmentsPanel() {
         </div>
       ) : null}
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Edit / delete an establishment card
+// ---------------------------------------------------------------------------
+
+export type EstablishmentEditData = {
+  id: string;
+  name: string;
+  city: string | null;
+  country: string;
+  plan: string;
+  seatsLimit: number;
+};
+
+export function AdminEditEstablishmentPanel({
+  school,
+  onCancel,
+  onDeleted,
+}: {
+  school: EstablishmentEditData;
+  onCancel: () => void;
+  onDeleted?: () => void;
+}) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+
+  const [name, setName] = useState(school.name);
+  const [city, setCity] = useState(school.city ?? "");
+  const [country, setCountry] = useState(school.country);
+  const [plan, setPlan] = useState(school.plan);
+  const [seatsLimit, setSeatsLimit] = useState(String(school.seatsLimit));
+
+  async function save() {
+    setBusy(true); setError(null);
+    const data = await send("/api/admin/establishments", "PATCH", {
+      id: school.id, name, city: city || null, country, plan, seatsLimit: Number(seatsLimit) || 500,
+    });
+    setBusy(false);
+    if (data.ok) {
+      router.refresh();
+      onCancel();
+    } else {
+      setError(data.code === "NAME_TAKEN" ? "Name already used" : "Could not update the establishment");
+    }
+  }
+
+  async function remove() {
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    setBusy(true); setError(null);
+    const data = await send("/api/admin/establishments", "DELETE", { id: school.id });
+    setBusy(false);
+    if (data.ok) {
+      router.refresh();
+      onDeleted?.();
+    } else {
+      setError("Could not delete the establishment");
+    }
+  }
+
+  return (
+    <div className="space-y-3 border-t border-slate-100 pt-3 dark:border-slate-800">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div><Label>{t("School name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} /></div>
+        <div><Label>{t("City")}</Label><Input value={city} onChange={(e) => setCity(e.target.value)} /></div>
+        <div><Label>{t("Plan")}</Label>
+          <select value={plan} onChange={(e) => setPlan(e.target.value)} className={inputClass}>{PLAN_OPTIONS.map((p) => <option key={p.code} value={p.code}>{t(p.label)}</option>)}</select></div>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div><Label>{t("Country")}</Label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputClass}>{COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{t(c.label)}</option>)}</select></div>
+        <div><Label>{t("Seats limit")}</Label><Input type="number" value={seatsLimit} onChange={(e) => setSeatsLimit(e.target.value)} /></div>
+      </div>
+      <div className="flex items-center gap-3">
+        <Button size="sm" onClick={save} disabled={busy || !name.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} {t("Save")}</Button>
+        <Button size="sm" variant="ghost" onClick={onCancel}>{t("Cancel")}</Button>
+        <div className="flex-1" />
+        <Button size="sm" variant="destructive" onClick={remove} disabled={busy}>
+          {confirmDelete ? t("Confirm delete") : <Trash2 className="h-4 w-4" />}
+        </Button>
+      </div>
+      {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+    </div>
   );
 }
 

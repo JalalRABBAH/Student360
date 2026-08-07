@@ -239,6 +239,10 @@ export async function createEstablishment(session: SessionPayload, input: Create
   const name = input.name?.trim();
   if (!name) throw new Error("INVALID");
 
+  // Prevent duplicate names (the slug dedup below covers collision, but same-name is confusing for users).
+  const existing = await prisma.school.findFirst({ where: { name }, select: { id: true } });
+  if (existing) throw new Error("NAME_TAKEN");
+
   let slug = slugify(name) || "school";
   let candidate = slug;
   let index = 1;
@@ -295,6 +299,8 @@ export type ManagedEstablishment = {
   city: string | null;
   country: string;
   role: string;
+  plan: string;
+  seatsLimit: number;
   studentCount: number;
   teacherCount: number;
   classCount: number;
@@ -345,7 +351,7 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
 
   const details = await prisma.school.findMany({
     where: { id: { in: ids } },
-    select: { id: true, name: true, slug: true, city: true, country: true },
+    select: { id: true, name: true, slug: true, city: true, country: true, plan: true, seatsLimit: true },
     orderBy: { name: "asc" },
   });
 
@@ -355,9 +361,64 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
     slug: school.slug,
     city: school.city,
     country: school.country,
+    plan: school.plan,
+    seatsLimit: school.seatsLimit,
     role: roleBySchool.get(school.id) ?? "ADMIN",
     studentCount: count(students, school.id),
     teacherCount: count(teachers, school.id),
     classCount: count(classes, school.id),
   }));
+}
+
+// ---------------------------------------------------------------------------
+// Update & delete establishment
+// ---------------------------------------------------------------------------
+
+export type UpdateEstablishmentInput = {
+  name?: string;
+  city?: string | null;
+  country?: string;
+  plan?: string;
+  seatsLimit?: number;
+};
+
+export async function updateEstablishment(session: SessionPayload, schoolId: string, input: UpdateEstablishmentInput): Promise<{ ok: true; name: string }> {
+  const allowed = await canManageSchool(session, schoolId);
+  if (!allowed) throw new Error("FORBIDDEN");
+
+  const data: Record<string, unknown> = {};
+  if (typeof input.name === "string" && input.name.trim()) {
+    const newName = input.name.trim();
+    const dup = await prisma.school.findFirst({ where: { name: newName, id: { not: schoolId } }, select: { id: true } });
+    if (dup) throw new Error("NAME_TAKEN");
+    data.name = newName;
+  }
+  if (typeof input.city === "string") data.city = input.city.trim() || null;
+  if (typeof input.country === "string") data.country = input.country.trim() || "MA";
+  if (typeof input.plan === "string") data.plan = input.plan;
+  if (typeof input.seatsLimit === "number" && input.seatsLimit > 0) data.seatsLimit = Math.round(input.seatsLimit);
+
+  if (!Object.keys(data).length) throw new Error("INVALID");
+
+  const school = await prisma.school.update({
+    where: { id: schoolId },
+    data,
+    select: { name: true },
+  });
+
+  await audit(session, { action: "ESTABLISHMENT.UPDATED", entityType: "School", entityId: schoolId, metadata: { ...data } });
+  return { ok: true, name: school.name };
+}
+
+export async function deleteEstablishment(session: SessionPayload, schoolId: string) {
+  const allowed = await canManageSchool(session, schoolId);
+  if (!allowed) throw new Error("FORBIDDEN");
+
+  const school = await prisma.school.findUnique({ where: { id: schoolId }, select: { name: true } });
+  if (!school) throw new Error("NOT_FOUND");
+
+  await prisma.school.delete({ where: { id: schoolId } });
+
+  await audit(session, { action: "ESTABLISHMENT.DELETED", entityType: "School", entityId: schoolId, metadata: { name: school.name } });
+  return { ok: true };
 }

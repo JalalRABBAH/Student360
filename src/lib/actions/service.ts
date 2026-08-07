@@ -30,10 +30,11 @@ import {
   ACTION_STATUS,
   ACTION_TARGET_ROLES,
   ROLES,
+  type RoleCode,
 } from "@/lib/domain/enums";
 import { audit } from "@/lib/auth/audit";
 
-const ACTIONABLE_ROLES = [ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT];
+const ACTIONABLE_ROLES: RoleCode[] = [ROLES.TEACHER, ROLES.STUDENT, ROLES.PARENT];
 
 // ---------------------------------------------------------------------------
 // Date helpers (local time — consistent with the seed's date arithmetic)

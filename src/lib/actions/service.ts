@@ -388,7 +388,7 @@ export async function assignAction(session: SessionPayload, input: AssignActionI
     data: {
       schoolId: assignee.schoolId,
       assigneeUserId: assignee.id,
-      studentId: student?.id ?? null,
+    studentId: student?.id ?? undefined,
       assignedById: session.sub,
       source: actorTeacher ? ACTION_SOURCES.TEACHER : ACTION_SOURCES.ADMIN,
       required: input.required === ACTION_REQUIRED.MANDATORY ? ACTION_REQUIRED.MANDATORY : ACTION_REQUIRED.OPTIONAL,

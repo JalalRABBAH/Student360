@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { SESSION_COOKIE, verifySession } from "@/lib/auth/session";
 import { defaultLocale, isLocale, localizePath, type Locale } from "@/i18n/config";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/auth/demo-accounts", "/forbidden", "/welcome"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/forbidden", "/welcome"];
 
 function isPublic(pathname: string) {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;

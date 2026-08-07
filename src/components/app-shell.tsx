@@ -1,7 +1,6 @@
 "use client";
 
 import { LocalizedLink as Link } from "@/i18n/provider";
-import { demoClasses, demoStudents } from "@/lib/demo-data";
 import { usePathname } from "next/navigation";
 import { cn, initials } from "@/lib/utils";
 import { SidebarItem } from "@/components/sidebar-item";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, PanelLeftClose, PanelLeft } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { iconMap, type IconName } from "@/components/navigation";
 import { GlobalSearch, NotificationCenter, UserMenu } from "@/components/global-tools";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -197,12 +196,22 @@ export function TopBar({
   const barePathname = pathname ? stripLocale(pathname) : "";
   const segments = barePathname.split("/").filter(Boolean);
   const [section, resourceId] = segments;
-  const resourceLabel =
-    section === "students"
-      ? demoStudents.find((student) => student.id === resourceId)?.name
-      : section === "classes"
-        ? demoClasses.find((schoolClass) => schoolClass.id === resourceId)?.name
-        : undefined;
+  const [resourceLabel, setResourceLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (resourceId && (section === "students" || section === "classes")) {
+      let cancelled = false;
+      fetch(`/api/resources?type=${section}&id=${encodeURIComponent(resourceId)}`)
+        .then((response) => (response.ok ? response.json() : { name: null }))
+        .then((data: { name: string | null }) => {
+          if (!cancelled) setResourceLabel(data.name);
+        })
+        .catch(() => {});
+      return () => {
+        cancelled = true;
+      };
+    }
+    setResourceLabel(null);
+  }, [section, resourceId]);
   const breadcrumb = resourceLabel ?? segments.map((segment) => t(segment.replace(/-/g, " "))).join(" / ");
 
   return (

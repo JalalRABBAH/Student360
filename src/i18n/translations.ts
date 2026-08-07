@@ -383,6 +383,7 @@ const phrases: Record<string, TranslationPair> = {
   "Open navigation": { fr: "Ouvrir la navigation", ar: "فتح التنقل" },
   "Language": { fr: "Langue", ar: "اللغة" },
   "Network error": { fr: "Erreur réseau", ar: "خطأ في الشبكة" },
+  "Searching…": { fr: "Recherche…", ar: "جارٍ البحث…" },
   "English": { fr: "Anglais", ar: "الإنجليزية" },
   "French": { fr: "Français", ar: "الفرنسية" },
   "Arabic": { fr: "Arabe", ar: "العربية" },

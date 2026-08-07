@@ -26,7 +26,7 @@ export type SearchResult = {
 };
 
 function nameOr(term: string) {
-  const contains = { contains: term, mode: "insensitive" as const };
+  const contains = { contains: term };
   return {
     OR: [{ firstName: contains }, { lastName: contains }],
   };
@@ -71,7 +71,7 @@ export async function searchAll(session: SessionPayload, q: string, limit = 5): 
     const classes = await prisma.schoolClass.findMany({
       where: {
         ...(classIds === "ALL" ? {} : { id: { in: classIds } }),
-        OR: [{ name: { contains: term, mode: "insensitive" } }, { gradeLevel: { contains: term, mode: "insensitive" } }],
+        OR: [{ name: { contains: term } }, { gradeLevel: { contains: term } }],
       },
       select: { id: true, name: true, gradeLevel: true },
       orderBy: [{ gradeOrder: "asc" }],

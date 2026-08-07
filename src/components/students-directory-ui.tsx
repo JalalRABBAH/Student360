@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
-import { AdminClassesPanel, AdminParentsPanel, AdminStudentsPanel, AdminTeachersPanel } from "@/components/admin-panels";
+import { AdminAccountsPanel, AdminClassesPanel, AdminEstablishmentsPanel, AdminParentsPanel, AdminStudentsPanel, AdminTeachersPanel } from "@/components/admin-panels";
 import type { AdminPanelsData } from "@/lib/admin/panels-data";import type { ChildCard, ClassCard, SchoolOverview, StudentRosterEntry, TeacherEntry } from "@/lib/students/service";
 
 const SIGNAL_TONE = { POSITIVE: "positive", STABLE: "neutral", WATCH: "watch", ATTENTION: "attention" } as const;
@@ -208,11 +208,18 @@ export function ChildrenPage({ children }: { children: ChildCard[] }) {
 // School overview
 // ---------------------------------------------------------------------------
 
-export function SchoolPage({ overview }: { overview: SchoolOverview }) {
+export function SchoolPage({ overview, admin }: { overview: SchoolOverview; admin?: AdminPanelsData }) {
   const { t } = useI18n();
+  const canManage = Boolean(admin?.canManage);
   return (
     <div className="space-y-6">
       <PageHeader title={t(overview.schoolName)} description={t("School overview") + (overview.city ? ` · ${overview.city}` : "") + ` · ${overview.country}`} />
+      {canManage ? (
+        <div className="grid gap-6 xl:grid-cols-2">
+          <AdminEstablishmentsPanel />
+          <AdminAccountsPanel classes={admin!.classes} students={admin!.students} />
+        </div>
+      ) : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <MetricCard label={t("Students")} value={overview.students} detail={t("Active students")} icon={Users} />
         <MetricCard label={t("Teachers")} value={overview.teachers} detail={t("Active teaching staff")} icon={GraduationCap} tone="sky" />

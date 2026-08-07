@@ -1504,3 +1504,28 @@ phrases["Create, edit and manage"] = { fr: "Créer, modifier et gérer", ar: "إ
 phrases["View and consult"] = { fr: "Consulter et voir", ar: "عرض واطلاع" };
 phrases["Every profile accesses the platform through modules, each granted read or write access. This matrix is read-only and defines what each profile can see and do."] = { fr: "Chaque profil accède à la plateforme via des modules, chacun disposant d'un accès en lecture ou en écriture. Cette matrice est en lecture seule et définit ce que chaque profil peut voir et faire.", ar: "يصل كل ملف شخصي إلى المنصة عبر وحدات، تُمنح لكل منها صلاحية قراءة أو كتابة. هذه المصفوفة للقراءة فقط وتحدد ما يمكن لكل ملف رؤيته والقيام به." };
 phrases["This module is on the roadmap and will be available in a future update."] = { fr: "Ce module fait partie de la feuille de route et sera disponible dans une prochaine mise à jour.", ar: "هذه الوحدة ضمن خارطة الطريق وستكون متاحة في تحديث قادم." };
+
+// ---------------------------------------------------------------------------
+// Accounts & establishments (admin)
+// ---------------------------------------------------------------------------
+phrases["Seats limit"] = { fr: "Limite de sièges", ar: "حد المقاعد" };
+phrases["Profile"] = { fr: "Profil", ar: "الملف الشخصي" };
+phrases["Pro"] = { fr: "Pro", ar: "احترافي" };
+phrases["Enterprise"] = { fr: "Entreprise", ar: "مؤسسات" };
+phrases["Morocco"] = { fr: "Maroc", ar: "المغرب" };
+phrases["France"] = { fr: "France", ar: "فرنسا" };
+phrases["Spain"] = { fr: "Espagne", ar: "إسبانيا" };
+phrases["Belgium"] = { fr: "Belgique", ar: "بلجيكا" };
+phrases["Canada"] = { fr: "Canada", ar: "كندا" };
+phrases["Senegal"] = { fr: "Sénégal", ar: "السنغال" };
+phrases["United States"] = { fr: "États-Unis", ar: "الولايات المتحدة" };
+phrases["Create an account"] = { fr: "Créer un compte", ar: "إنشاء حساب" };
+phrases["Create account"] = { fr: "Créer le compte", ar: "إنشاء الحساب" };
+phrases["Create an establishment"] = { fr: "Créer un établissement", ar: "إنشاء مؤسسة" };
+phrases["Create establishment"] = { fr: "Créer l'établissement", ar: "إنشاء المؤسسة" };
+phrases["Establishment created"] = { fr: "Établissement créé", ar: "تم إنشاء المؤسسة" };
+phrases["No classes yet"] = { fr: "Aucune classe pour le moment", ar: "لا توجد فصول بعد" };
+phrases["Could not create the account"] = { fr: "Impossible de créer le compte", ar: "تعذر إنشاء الحساب" };
+phrases["Could not create the establishment"] = { fr: "Impossible de créer l'établissement", ar: "تعذر إنشاء المؤسسة" };
+phrases["Creates a staff or parent account with a temporary password."] = { fr: "Crée un compte personnel ou parent avec un mot de passe temporaire.", ar: "إنشاء حساب موظف أو ولي أمر بكلمة مرور مؤقتة." };
+phrases["Adds a new school to the platform with its own campus and school year."] = { fr: "Ajoute un nouvel établissement à la plateforme avec son campus et son année scolaire.", ar: "إضافة مدرسة جديدة إلى المنصة مع حرمها وسنتها الدراسية." };

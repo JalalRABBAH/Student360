@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { CalendarDays, Loader2, Plus, Trash2, UserPlus, Users } from "lucide-react";
+import { Building2, CalendarDays, Loader2, Plus, Trash2, UserCog, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useI18n } from "@/i18n/provider";
+import { ROLE_LABELS } from "@/lib/domain/enums";
 
 export type AdminClassOption = { id: string; name: string };
 export type AdminStudentOption = { id: string; name: string };
@@ -411,6 +412,157 @@ export function ClassTimetablePanel({ classId, subjects, teachers, slots }: { cl
           );
         })}
       </div>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create a generic account (staff / parent profile)
+// ---------------------------------------------------------------------------
+
+const ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT"] as const;
+
+export function AdminAccountsPanel({ classes, students }: { classes: AdminClassOption[]; students: AdminStudentOption[] }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ name: string; email: string; password: string }[]>([]);
+
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<string>("TEACHER");
+  const [classIds, setClassIds] = useState<string[]>([]);
+  const [studentIds, setStudentIds] = useState<string[]>([]);
+
+  function toggleClass(id: string) {
+    setClassIds((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  }
+  function toggleStudent(id: string) {
+    setStudentIds((list) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]));
+  }
+
+  async function submit() {
+    setBusy(true); setError(null); setResult([]);
+    const data = await send("/api/admin/accounts", "POST", {
+      firstName, lastName, email, role, classIds: role === "TEACHER" ? classIds : [], studentIds: role === "PARENT" ? studentIds : [],
+    });
+    setBusy(false);
+    if (data.ok) {
+      setResult([{ name: `${data.firstName} ${data.lastName}`, email: data.email, password: data.temporaryPassword }]);
+      setFirstName(""); setLastName(""); setEmail(""); setClassIds([]); setStudentIds([]);
+      router.refresh();
+    } else {
+      setError(data.code === "EMAIL_TAKEN" ? "Email already used" : "Could not create the account");
+    }
+  }
+
+  const chip = (active: boolean, key: string, onClick: () => void, children: ReactNode) => (
+    <button key={key} type="button" onClick={onClick} className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${active ? "bg-primary-600 text-white" : "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{children}</button>
+  );
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-500/10"><UserCog className="h-5 w-5" /></div><div><h2 className="font-bold">{t("Create an account")}</h2><p className="text-xs text-slate-500">{t("Creates a staff or parent account with a temporary password.")}</p></div></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-4">
+        <div><Label>{t("First name")}</Label><Input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
+        <div><Label>{t("Last name")}</Label><Input value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
+        <div><Label>{t("Email")}</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="account@school.com" /></div>
+        <div><Label>{t("Profile")}</Label>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className={inputClass}>{ACCOUNT_ROLES.map((r) => <option key={r} value={r}>{t(ROLE_LABELS[r])}</option>)}</select></div>
+      </div>
+      {role === "TEACHER" ? (
+        <div className="mt-3">
+          <Label>{t("Assign to classes")}</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {classes.length ? classes.map((c) => chip(classIds.includes(c.id), c.id, () => toggleClass(c.id), c.name)) : <span className="text-xs text-slate-500">{t("No classes yet")}</span>}
+          </div>
+        </div>
+      ) : null}
+      {role === "PARENT" ? (
+        <div className="mt-3">
+          <Label>{t("Link to children")}</Label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {students.length ? students.map((s) => chip(studentIds.includes(s.id), s.id, () => toggleStudent(s.id), s.name)) : <span className="text-xs text-slate-500">{t("No students yet")}</span>}
+          </div>
+        </div>
+      ) : null}
+      <div className="mt-4 flex items-center gap-3">
+        <Button onClick={submit} disabled={busy || !firstName.trim() || !lastName.trim() || !email.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("Create account")}</Button>
+        {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+      </div>
+      <CredentialBox title={t("Account created")} accounts={result} />
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create an establishment (school)
+// ---------------------------------------------------------------------------
+
+const COUNTRY_OPTIONS = [
+  { code: "MA", label: "Morocco" },
+  { code: "FR", label: "France" },
+  { code: "ES", label: "Spain" },
+  { code: "BE", label: "Belgium" },
+  { code: "CA", label: "Canada" },
+  { code: "SN", label: "Senegal" },
+  { code: "US", label: "United States" },
+];
+
+const PLAN_OPTIONS = [
+  { code: "TRIAL", label: "Trial" },
+  { code: "PRO", label: "Pro" },
+  { code: "ENTERPRISE", label: "Enterprise" },
+];
+
+export function AdminEstablishmentsPanel() {
+  const { t } = useI18n();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ name: string; slug: string } | null>(null);
+
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("MA");
+  const [plan, setPlan] = useState("PRO");
+  const [seatsLimit, setSeatsLimit] = useState("500");
+
+  async function submit() {
+    setBusy(true); setError(null); setCreated(null);
+    const data = await send("/api/admin/establishments", "POST", { name, city: city || null, country, plan, seatsLimit: Number(seatsLimit) || 500 });
+    setBusy(false);
+    if (data.ok) {
+      setCreated({ name: data.name, slug: data.slug });
+      setName(""); setCity("");
+    } else {
+      setError("Could not create the establishment");
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-500/10"><Building2 className="h-5 w-5" /></div><div><h2 className="font-bold">{t("Create an establishment")}</h2><p className="text-xs text-slate-500">{t("Adds a new school to the platform with its own campus and school year.")}</p></div></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-5">
+        <div><Label>{t("School name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lycée Al Amal" /></div>
+        <div><Label>{t("City")}</Label><Input value={city} onChange={(e) => setCity(e.target.value)} /></div>
+        <div><Label>{t("Country")}</Label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputClass}>{COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{t(c.label)}</option>)}</select></div>
+        <div><Label>{t("Plan")}</Label>
+          <select value={plan} onChange={(e) => setPlan(e.target.value)} className={inputClass}>{PLAN_OPTIONS.map((p) => <option key={p.code} value={p.code}>{t(p.label)}</option>)}</select></div>
+        <div><Label>{t("Seats limit")}</Label><Input type="number" value={seatsLimit} onChange={(e) => setSeatsLimit(e.target.value)} /></div>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button onClick={submit} disabled={busy || !name.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("Create establishment")}</Button>
+        {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+      </div>
+      {created ? (
+        <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs dark:border-sky-500/30 dark:bg-sky-500/10">
+          <div className="font-semibold text-sky-700 dark:text-sky-300">{t("Establishment created")}</div>
+          <div className="mt-1 text-sky-700/70 dark:text-sky-300/70">{created.name} · {created.slug}</div>
+        </div>
+      ) : null}
     </Card>
   );
 }

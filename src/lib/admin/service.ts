@@ -329,6 +329,78 @@ export async function createTeacher(session: SessionPayload, input: CreateTeache
 }
 
 // ---------------------------------------------------------------------------
+// Generic account (staff + parent) — create any profile from the admin area
+// ---------------------------------------------------------------------------
+
+export const CREATABLE_ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT"] as const;
+export type CreatableAccountRole = (typeof CREATABLE_ACCOUNT_ROLES)[number];
+
+export type CreateAccountInput = {
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  title?: string;
+  classIds?: string[];
+  studentIds?: string[];
+};
+
+export async function createAccount(session: SessionPayload, input: CreateAccountInput): Promise<CreatedAccount & { role: string }> {
+  const schoolId = requireSchool(session);
+  if (!input.firstName?.trim() || !input.lastName?.trim() || !input.email?.trim()) throw new Error("INVALID");
+  if (!(CREATABLE_ACCOUNT_ROLES as readonly string[]).includes(input.role)) throw new Error("INVALID");
+  const role = input.role as CreatableAccountRole;
+
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
+  const employeeNumber = role === "TEACHER" ? await nextSequenceNumber(schoolId, "EMP") : null;
+
+  const user = await prisma.user.create({
+    data: {
+      schoolId,
+      email: input.email.trim().toLowerCase(),
+      passwordHash,
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      locale: "en",
+      theme: "dark",
+      isActive: true,
+      mustReset: true,
+      roles: { create: { roleCode: role, schoolId } },
+      ...(role === "TEACHER"
+        ? { teacher: { create: { schoolId, employeeNumber: employeeNumber ?? "", title: input.title?.trim() || "Mr.", specialties: null, status: "ACTIVE" } } }
+        : {}),
+      ...(role === "PARENT"
+        ? { guardian: { create: { schoolId, preferredContact: "EMAIL", status: "ACTIVE" } } }
+        : {}),
+    },
+    select: { id: true, email: true, teacher: { select: { id: true } }, guardian: { select: { id: true } } },
+  }).catch((error) => {
+    if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+    throw error;
+  });
+
+  if (role === "TEACHER" && user.teacher) {
+    for (const classId of input.classIds ?? []) {
+      const cls = await prisma.schoolClass.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
+      if (!cls) continue;
+      await prisma.teacherClassAssignment.create({ data: { teacherId: user.teacher.id, classId: cls.id, isHomeroom: false, role: "SUBJECT_TEACHER" } });
+    }
+  }
+
+  if (role === "PARENT" && user.guardian) {
+    for (const studentId of input.studentIds ?? []) {
+      const student = await prisma.student.findFirst({ where: { id: studentId, schoolId }, select: { id: true } });
+      if (!student) continue;
+      await prisma.parentStudentRelationship.create({ data: { guardianId: user.guardian.id, studentId: student.id, relationship: "PARENT", isPrimary: false } });
+    }
+  }
+
+  await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role } });
+  return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
+}
+
+// ---------------------------------------------------------------------------
 // Classes + teacher assignments + timetable
 // ---------------------------------------------------------------------------
 

@@ -6,12 +6,13 @@
  * capability defensively; the pages also gate with `requireCapability`.
  */
 
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { can } from "@/lib/auth/rbac";
 import type { SessionPayload } from "@/lib/auth/session";
 import { ROLES, ROLE_LABELS, type RoleCode } from "@/lib/domain/enums";
 import { fullName, initials } from "@/lib/utils";
+import { audit } from "@/lib/auth/audit";
 
 const THIRTY_DAYS = 30 * 86_400_000;
 
@@ -207,4 +208,70 @@ export async function getPlatformOverview(): Promise<PlatformOverview> {
     students,
     teachers,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Create establishment (leadership: ADMIN / PRINCIPAL / SUPER_ADMIN)
+// ---------------------------------------------------------------------------
+
+export type CreateEstablishmentInput = {
+  name: string;
+  city?: string | null;
+  country?: string;
+  plan?: string;
+  seatsLimit?: number;
+};
+
+export type CreatedEstablishment = { ok: true; id: string; name: string; slug: string };
+
+function slugify(value: string) {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 48);
+}
+
+export async function createEstablishment(session: SessionPayload, input: CreateEstablishmentInput): Promise<CreatedEstablishment> {
+  if (!can(session, "school:configure")) throw new Error("FORBIDDEN");
+  const name = input.name?.trim();
+  if (!name) throw new Error("INVALID");
+
+  let slug = slugify(name) || "school";
+  let candidate = slug;
+  let index = 1;
+  while (await prisma.school.findUnique({ where: { slug: candidate }, select: { id: true } })) {
+    candidate = `${slug}-${index++}`;
+  }
+
+  const now = new Date();
+  const yearName = `${now.getFullYear()}-${now.getFullYear() + 1}`;
+
+  let school: { id: string; name: string; slug: string };
+  try {
+    school = await prisma.school.create({
+      data: {
+        name,
+        slug: candidate,
+        city: input.city?.trim() || null,
+        country: input.country?.trim() || "MA",
+        plan: input.plan || "PRO",
+        status: "ACTIVE",
+        seatsLimit: input.seatsLimit || 500,
+        campuses: { create: { name, isMain: true } },
+        academicYears: {
+          create: { name: yearName, startDate: new Date(now.getFullYear(), 8, 1), endDate: new Date(now.getFullYear() + 1, 6, 31), isCurrent: true },
+        },
+      },
+      select: { id: true, name: true, slug: true },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") throw new Error("SLUG_TAKEN");
+    throw error;
+  }
+
+  await audit(session, { action: "ESTABLISHMENT.CREATED", entityType: "School", entityId: school.id, metadata: { name: school.name } });
+  return { ok: true, id: school.id, name: school.name, slug: school.slug };
 }

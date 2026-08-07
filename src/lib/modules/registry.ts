@@ -9,6 +9,7 @@
 
 import {
   BarChart3,
+  Bell,
   BookOpen,
   BrainCircuit,
   Bus,
@@ -67,7 +68,8 @@ export type IconName =
   | "Utensils"
   | "Bus"
   | "Wallet"
-  | "KeyRound";
+  | "KeyRound"
+  | "Bell";
 
 export const iconMap: Record<IconName, LucideIcon> = {
   LayoutDashboard,
@@ -96,6 +98,7 @@ export const iconMap: Record<IconName, LucideIcon> = {
   Bus,
   Wallet,
   KeyRound,
+  Bell,
 };
 
 // ---------------------------------------------------------------------------

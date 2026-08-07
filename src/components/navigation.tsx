@@ -1,16 +1,16 @@
 import type { RoleCode } from "@/lib/domain/enums";
 import type { NavItem } from "@/components/sidebar-item";
-import { accessibleModules, iconMap, type IconName } from "@/lib/modules/registry";
+import { accessibleModules, iconMap, type IconName, type ModuleCode } from "@/lib/modules/registry";
 
 export type { IconName };
 export { iconMap };
 
 export type NavSpec = { label: string; href: string; icon: IconName; badge?: number | string };
 
-type RoleNavItem = { label: string; href: string; icon: IconName; module?: string };
+type RoleNavItem = { label: string; href: string; icon: IconName; module?: ModuleCode };
 type RoleNavGroup = { label: string; items: RoleNavItem[] };
 
-function moduleItem(module: string, href: string, label?: string, icon?: IconName): RoleNavItem {
+function moduleItem(module: ModuleCode, href: string, label?: string, icon?: IconName): RoleNavItem {
   return { label: label ?? module, href, icon: icon ?? "School", module };
 }
 

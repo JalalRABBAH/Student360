@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/auth/server";
 import { createClass } from "@/lib/admin/service";
+import { errorCode } from "@/lib/errors";
 
 export async function POST(req: Request) {
   const { session, error } = await apiSession();
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     const status = code === "FORBIDDEN" ? 403 : code === "CLASS_TAKEN" ? 409 : code === "NO_ACADEMIC_YEAR" ? 400 : 400;
     return NextResponse.json({ error: code, code }, { status });
   }

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { apiSession } from "@/lib/auth/server";
 import { isLeadership } from "@/lib/auth/rbac";
 import { createTemplate, listTemplates } from "@/lib/actions/service";
+import { errorCode } from "@/lib/errors";
 
 export async function GET() {
   const { session, error } = await apiSession();
@@ -13,7 +14,7 @@ export async function GET() {
     const templates = await listTemplates(session!);
     return NextResponse.json({ templates });
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     return NextResponse.json({ error: code, code }, { status: code === "FORBIDDEN" ? 403 : 400 });
   }
 }
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     const status = code === "FORBIDDEN" ? 403 : code === "DUPLICATE" ? 409 : 400;
     return NextResponse.json({ error: code, code }, { status });
   }

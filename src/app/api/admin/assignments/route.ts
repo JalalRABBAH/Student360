@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/auth/server";
 import { assignTeacherToClass, unassignTeacherFromClass } from "@/lib/admin/service";
+import { errorCode } from "@/lib/errors";
 
 export async function POST(req: Request) {
   const { session, error } = await apiSession();
@@ -21,7 +22,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     const status = code === "FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : code === "DUPLICATE" ? 409 : 400;
     return NextResponse.json({ error: code, code }, { status });
   }
@@ -37,7 +38,7 @@ export async function DELETE(req: Request) {
     const result = await unassignTeacherFromClass(session!, id);
     return NextResponse.json(result);
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     return NextResponse.json({ error: code, code }, { status: code === "NOT_FOUND" ? 404 : 400 });
   }
 }

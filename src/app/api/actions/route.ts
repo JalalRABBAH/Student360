@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/auth/server";
 import { assignAction, listMyActions } from "@/lib/actions/service";
+import { errorCode } from "@/lib/errors";
 
 export async function GET() {
   const { session, error } = await apiSession();
@@ -30,7 +31,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json(result);
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     const status = code === "FORBIDDEN" ? 403 : code === "NOT_FOUND" ? 404 : 400;
     return NextResponse.json({ error: code, code }, { status });
   }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { apiSession } from "@/lib/auth/server";
 import { createParent } from "@/lib/admin/service";
+import { errorCode } from "@/lib/errors";
 
 export async function POST(req: Request) {
   const { session, error } = await apiSession();
@@ -22,7 +23,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, ...created });
   } catch (e) {
-    const code = typeof e === "string" ? e : "ERROR";
+    const code = errorCode(e);
     const status = code === "FORBIDDEN" ? 403 : code === "EMAIL_TAKEN" ? 409 : 400;
     return NextResponse.json({ error: code, code }, { status });
   }

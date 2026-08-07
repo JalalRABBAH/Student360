@@ -1476,3 +1476,31 @@ phrases["Share a weekly update with the school"] = { fr: "Partager une mise à j
 phrases["Homework support, observations or a short note for the teacher."] = { fr: "Aide aux devoirs, observations ou courte note pour l'enseignant.", ar: "مساعدة في الواجبات أو ملاحظات أو ملاحظة قصيرة للمعلم." };
 phrases["Send the monthly family report"] = { fr: "Envoyer le rapport mensuel aux familles", ar: "أرسل التقرير الشهري إلى الأسر" };
 phrases["A concise progress summary for the families of your class."] = { fr: "Un résumé de progression concis pour les familles de votre classe.", ar: "ملخص موجز للتقدم لأسر فصلتك." };
+
+// ---------------------------------------------------------------------------
+// Modules & permissions (Skouly-aligned, per-profile access)
+// ---------------------------------------------------------------------------
+phrases["Establishments"] = { fr: "Établissements", ar: "المؤسسات" };
+phrases["Student Performance"] = { fr: "Performance Élève", ar: "أداء التلميذ" };
+phrases["Calendar"] = { fr: "Calendrier", ar: "التقويم" };
+phrases["Messaging"] = { fr: "Messagerie", ar: "المراسلة" };
+phrases["Programs"] = { fr: "Programmes", ar: "البرامج" };
+phrases["Levels & Subjects"] = { fr: "Niveaux & Matières", ar: "المستويات والمواد" };
+phrases["Internal Rules"] = { fr: "Règlement intérieur", ar: "النظام الداخلي" };
+phrases["Canteen"] = { fr: "Cantine", ar: "المقصف" };
+phrases["Finance & Fees"] = { fr: "Finance & Frais", ar: "المالية والرسوم" };
+phrases["Modules & Permissions"] = { fr: "Modules & Permissions", ar: "الوحدات والصلاحيات" };
+phrases["People & Administration"] = { fr: "Personnes & Administration", ar: "الأشخاص والإدارة" };
+phrases["Academic & Curriculum"] = { fr: "Académique & Programme", ar: "الأكاديمي والمناهج" };
+phrases["Operations & Campus"] = { fr: "Opérations & Campus", ar: "العمليات والحرم المدرسي" };
+phrases["Communication & Community"] = { fr: "Communication & Communauté", ar: "التواصل والمجتمع" };
+phrases["Finance & Reporting"] = { fr: "Finance & Reporting", ar: "المالية والتقارير" };
+phrases["Connect"] = { fr: "Connecter", ar: "تواصل" };
+phrases["Module"] = { fr: "Module", ar: "الوحدة" };
+phrases["Read"] = { fr: "Lecture", ar: "قراءة" };
+phrases["Write"] = { fr: "Écriture", ar: "كتابة" };
+phrases["No access"] = { fr: "Aucun accès", ar: "لا يوجد وصول" };
+phrases["Create, edit and manage"] = { fr: "Créer, modifier et gérer", ar: "إنشاء وتعديل وإدارة" };
+phrases["View and consult"] = { fr: "Consulter et voir", ar: "عرض واطلاع" };
+phrases["Every profile accesses the platform through modules, each granted read or write access. This matrix is read-only and defines what each profile can see and do."] = { fr: "Chaque profil accède à la plateforme via des modules, chacun disposant d'un accès en lecture ou en écriture. Cette matrice est en lecture seule et définit ce que chaque profil peut voir et faire.", ar: "يصل كل ملف شخصي إلى المنصة عبر وحدات، تُمنح لكل منها صلاحية قراءة أو كتابة. هذه المصفوفة للقراءة فقط وتحدد ما يمكن لكل ملف رؤيته والقيام به." };
+phrases["This module is on the roadmap and will be available in a future update."] = { fr: "Ce module fait partie de la feuille de route et sera disponible dans une prochaine mise à jour.", ar: "هذه الوحدة ضمن خارطة الطريق وستكون متاحة في تحديث قادم." };

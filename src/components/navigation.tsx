@@ -1,122 +1,79 @@
-import {
-  LayoutDashboard,
-  Users,
-  GraduationCap,
-  CalendarDays,
-  BookOpen,
-  ClipboardList,
-  BarChart3,
-  MessageSquare,
-  FileText,
-  Settings,
-  School,
-  BrainCircuit,
-  HeartHandshake,
-  Trophy,
-  Clock,
-  Target,
-  Sparkles,
-  Bell,
-  CheckCircle2,
-  type LucideIcon,
-} from "lucide-react";
-import type { NavItem } from "@/components/sidebar-item";
 import type { RoleCode } from "@/lib/domain/enums";
+import type { NavItem } from "@/components/sidebar-item";
+import { accessibleModules, iconMap, type IconName } from "@/lib/modules/registry";
 
-export type IconName =
-  | "LayoutDashboard"
-  | "Users"
-  | "GraduationCap"
-  | "CalendarDays"
-  | "BookOpen"
-  | "ClipboardList"
-  | "BarChart3"
-  | "MessageSquare"
-  | "FileText"
-  | "Settings"
-  | "School"
-  | "BrainCircuit"
-  | "HeartHandshake"
-  | "Trophy"
-  | "Clock"
-  | "Target"
-  | "Sparkles"
-  | "Bell"
-  | "CheckCircle2";
+export type { IconName };
+export { iconMap };
 
-export const iconMap: Record<IconName, LucideIcon> = {
-  LayoutDashboard,
-  Users,
-  GraduationCap,
-  CalendarDays,
-  BookOpen,
-  ClipboardList,
-  BarChart3,
-  MessageSquare,
-  FileText,
-  Settings,
-  School,
-  BrainCircuit,
-  HeartHandshake,
-  Trophy,
-  Clock,
-  Target,
-  Sparkles,
-  Bell,
-  CheckCircle2,
-};
+export type NavSpec = { label: string; href: string; icon: IconName; badge?: number | string };
 
-type NavSpec = { label: string; href: string; icon: IconName; badge?: number | string };
+type RoleNavItem = { label: string; href: string; icon: IconName; module?: string };
+type RoleNavGroup = { label: string; items: RoleNavItem[] };
 
-export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> = {
+function moduleItem(module: string, href: string, label?: string, icon?: IconName): RoleNavItem {
+  return { label: label ?? module, href, icon: icon ?? "School", module };
+}
+
+const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
   TEACHER: [
     {
       label: "Overview",
       items: [
         { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "Today", href: "/today", icon: "CalendarDays" },
-        { label: "My Classes", href: "/classes", icon: "School" },
-        { label: "Students", href: "/students", icon: "GraduationCap" },
-        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
-      ],
-    },
-    {
-      label: "Work",
-      items: [
-        { label: "Homework", href: "/homework", icon: "BookOpen" },
-        { label: "Observations", href: "/observations", icon: "ClipboardList" },
-        { label: "Assessments", href: "/assessments", icon: "FileText" },
-        { label: "Attendance", href: "/attendance", icon: "Clock" },
-      ],
-    },
-    {
-      label: "Review",
-      items: [
         { label: "Weekly Review", href: "/weekly-review", icon: "Sparkles" },
         { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
       ],
+    },
+    {
+      label: "People & Administration",
+      items: [
+        moduleItem("students", "/students", "Students", "GraduationCap"),
+        moduleItem("classes", "/classes", "Classes", "LayoutGrid"),
+      ],
+    },
+    {
+      label: "Academic & Curriculum",
+      items: [
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("assessments", "/assessments", "Assessments", "FileText"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+      ],
+    },
+    {
+      label: "Operations & Campus",
+      items: [
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
+      ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [moduleItem("reports", "/reports", "Reports", "FileText")],
     },
   ],
   STUDENT: [
     {
       label: "My day",
       items: [
-        { label: "My Day", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "My Progress", href: "/progress", icon: "BarChart3" },
-        { label: "Homework", href: "/homework", icon: "BookOpen" },
+        { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
         { label: "Goals", href: "/goals", icon: "Target" },
         { label: "Feedback", href: "/feedback", icon: "HeartHandshake" },
         { label: "Achievements", href: "/achievements", icon: "Trophy" },
-        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
       ],
     },
     {
       label: "Connect",
-      items: [
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
-        { label: "Help", href: "/help", icon: "Bell" },
-      ],
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare"), { label: "Help", href: "/help", icon: "Bell" }],
     },
   ],
   PARENT: [
@@ -124,19 +81,16 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
       label: "Family",
       items: [
         { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "My Children", href: "/children", icon: "Users" },
-        { label: "Today", href: "/today", icon: "CalendarDays" },
-        { label: "Homework", href: "/homework", icon: "BookOpen" },
-        { label: "Progress", href: "/progress", icon: "BarChart3" },
-        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
+        moduleItem("students", "/children", "My Children", "Users"),
+        moduleItem("calendar", "/today", "Today", "CalendarDays"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("performance", "/progress", "Progress", "BarChart3"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
       ],
     },
     {
       label: "School",
-      items: [
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
-        { label: "Reports", href: "/reports", icon: "FileText" },
-      ],
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare"), moduleItem("reports", "/reports", "Reports", "FileText")],
     },
   ],
   NURSE: [
@@ -144,42 +98,87 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
       label: "Overview",
       items: [
         { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "Students", href: "/students", icon: "GraduationCap" },
-        { label: "Today", href: "/today", icon: "CalendarDays" },
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
       ],
     },
     {
-      label: "Care",
+      label: "People & Administration",
+      items: [moduleItem("students", "/students", "Students", "GraduationCap")],
+    },
+    {
+      label: "Academic & Curriculum",
+      items: [moduleItem("performance", "/progress", "Student Performance", "BarChart3")],
+    },
+    {
+      label: "Operations & Campus",
       items: [
-        { label: "Health", href: "/health", icon: "HeartHandshake" },
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
       ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [moduleItem("reports", "/reports", "Reports", "FileText")],
     },
   ],
   ADMIN: [
     {
-      label: "School",
+      label: "Overview",
+      items: [{ label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" }],
+    },
+    {
+      label: "People & Administration",
       items: [
-        { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "School", href: "/school", icon: "School" },
-        { label: "Classes", href: "/classes", icon: "Users" },
-        { label: "Students", href: "/students", icon: "GraduationCap" },
-        { label: "Teachers", href: "/teachers", icon: "BookOpen" },
-        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
+        moduleItem("establishments", "/school", "Establishments", "School"),
+        moduleItem("students", "/students", "Students", "GraduationCap"),
+        moduleItem("teachers", "/teachers", "Teachers", "Users"),
+        moduleItem("classes", "/classes", "Classes", "LayoutGrid"),
       ],
     },
     {
-      label: "Operations",
+      label: "Academic & Curriculum",
       items: [
-        { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-        { label: "Attendance", href: "/attendance", icon: "Clock" },
-        { label: "Reports", href: "/reports", icon: "FileText" },
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("assessments", "/assessments", "Assessments", "FileText"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+        moduleItem("programs", "/modules/programs", "Programs", "Library"),
+        moduleItem("levels", "/modules/levels", "Levels & Subjects", "Layers"),
       ],
     },
     {
-      label: "Configuration",
-      items: [{ label: "Configuration", href: "/configuration", icon: "Settings" }],
+      label: "Operations & Campus",
+      items: [
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
+        moduleItem("rules", "/modules/rules", "Internal Rules", "ScrollText"),
+        moduleItem("canteen", "/modules/canteen", "Canteen", "Utensils"),
+        moduleItem("transport", "/modules/transport", "Transport", "Bus"),
+      ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [
+        moduleItem("finance", "/modules/finance", "Finance & Fees", "Wallet"),
+        moduleItem("reports", "/reports", "Reports", "FileText"),
+      ],
+    },
+    {
+      label: "Platform",
+      items: [
+        moduleItem("configuration", "/configuration", "Configuration", "Settings"),
+        moduleItem("permissions", "/permissions", "Modules & Permissions", "KeyRound"),
+      ],
     },
   ],
   PRINCIPAL: [
@@ -187,44 +186,137 @@ export const navGroups: Record<RoleCode, { label: string; items: NavSpec[] }[]> 
       label: "Executive",
       items: [
         { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "School", href: "/school", icon: "School" },
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
         { label: "Live View", href: "/live", icon: "Clock" },
         { label: "Analytics", href: "/analytics", icon: "BarChart3" },
-        { label: "Reports", href: "/reports", icon: "FileText" },
+        moduleItem("reports", "/reports", "Reports", "FileText"),
       ],
     },
     {
-      label: "People",
+      label: "People & Administration",
       items: [
-        { label: "Classes", href: "/classes", icon: "Users" },
-        { label: "Students", href: "/students", icon: "GraduationCap" },
-        { label: "Teachers", href: "/teachers", icon: "BookOpen" },
-        { label: "Actions", href: "/actions", icon: "CheckCircle2" },
-        { label: "Messages", href: "/messages", icon: "MessageSquare" },
+        moduleItem("establishments", "/school", "Establishments", "School"),
+        moduleItem("classes", "/classes", "Classes", "LayoutGrid"),
+        moduleItem("students", "/students", "Students", "GraduationCap"),
+        moduleItem("teachers", "/teachers", "Teachers", "Users"),
+      ],
+    },
+    {
+      label: "Academic & Curriculum",
+      items: [
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("assessments", "/assessments", "Assessments", "FileText"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+        moduleItem("programs", "/modules/programs", "Programs", "Library"),
+        moduleItem("levels", "/modules/levels", "Levels & Subjects", "Layers"),
+      ],
+    },
+    {
+      label: "Operations & Campus",
+      items: [
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
+        moduleItem("rules", "/modules/rules", "Internal Rules", "ScrollText"),
+        moduleItem("canteen", "/modules/canteen", "Canteen", "Utensils"),
+        moduleItem("transport", "/modules/transport", "Transport", "Bus"),
+      ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [
+        moduleItem("finance", "/modules/finance", "Finance & Fees", "Wallet"),
       ],
     },
     {
       label: "Configuration",
-      items: [{ label: "Configuration", href: "/configuration", icon: "Settings" }],
+      items: [
+        moduleItem("configuration", "/configuration", "Configuration", "Settings"),
+        moduleItem("permissions", "/permissions", "Modules & Permissions", "KeyRound"),
+      ],
     },
   ],
   SUPER_ADMIN: [
     {
+      label: "Overview",
+      items: [{ label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" }],
+    },
+    {
+      label: "People & Administration",
+      items: [
+        moduleItem("establishments", "/schools", "Establishments", "School"),
+        moduleItem("students", "/students", "Students", "GraduationCap"),
+        moduleItem("teachers", "/teachers", "Teachers", "Users"),
+        moduleItem("classes", "/classes", "Classes", "LayoutGrid"),
+      ],
+    },
+    {
+      label: "Academic & Curriculum",
+      items: [
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("assessments", "/assessments", "Assessments", "FileText"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+        moduleItem("programs", "/modules/programs", "Programs", "Library"),
+        moduleItem("levels", "/modules/levels", "Levels & Subjects", "Layers"),
+      ],
+    },
+    {
+      label: "Operations & Campus",
+      items: [
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
+        moduleItem("rules", "/modules/rules", "Internal Rules", "ScrollText"),
+        moduleItem("canteen", "/modules/canteen", "Canteen", "Utensils"),
+        moduleItem("transport", "/modules/transport", "Transport", "Bus"),
+      ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [
+        moduleItem("finance", "/modules/finance", "Finance & Fees", "Wallet"),
+        moduleItem("reports", "/reports", "Reports", "FileText"),
+      ],
+    },
+    {
       label: "Platform",
       items: [
-        { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
-        { label: "Schools", href: "/schools", icon: "School" },
         { label: "Users", href: "/users", icon: "Users" },
         { label: "Copilot", href: "/copilot", icon: "BrainCircuit" },
         { label: "Audit Log", href: "/audit", icon: "FileText" },
+        moduleItem("configuration", "/configuration", "Configuration", "Settings"),
+        moduleItem("permissions", "/permissions", "Modules & Permissions", "KeyRound"),
       ],
     },
   ],
 };
 
+/** Primary nav role: SUPER_ADMIN wins, otherwise the first role. */
+function primaryRole(roles: RoleCode[]): RoleCode {
+  return roles.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : (roles[0] ?? "TEACHER");
+}
+
 export function navigationForRoles(roles: RoleCode[]): { label: string; items: NavSpec[] }[] {
-  const primary = roles.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : (roles[0] ?? "TEACHER");
-  return navGroups[primary] ?? navGroups.TEACHER;
+  const primary = primaryRole(roles);
+  const accessible = new Set(accessibleModules(roles).map((m) => m.code));
+  const groups = (ROLE_NAV[primary] ?? ROLE_NAV.TEACHER)
+    .map((group) => ({
+      label: group.label,
+      items: group.items
+        .filter((item) => !item.module || accessible.has(item.module))
+        .map((item): NavSpec => ({ label: item.label, href: item.href, icon: item.icon })),
+    }))
+    .filter((group) => group.items.length > 0);
+  return groups;
 }
 
 export function resolveNavGroups(groups: { label: string; items: NavSpec[] }[]): { label: string; items: NavItem[] }[] {
@@ -233,5 +325,3 @@ export function resolveNavGroups(groups: { label: string; items: NavSpec[] }[]):
     items: g.items.map((i) => ({ ...i, icon: iconMap[i.icon] })),
   }));
 }
-
-export type { NavSpec };

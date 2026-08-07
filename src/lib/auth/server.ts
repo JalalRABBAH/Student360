@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 
 import { SESSION_COOKIE, type SessionPayload, verifySession } from "@/lib/auth/session";
 import { type Capability, can } from "@/lib/auth/rbac";
+import { canModule, type ModuleAccess, type ModuleCode } from "@/lib/modules/registry";
 import { prisma } from "@/lib/db";
 import { headers } from "next/headers";
 import { defaultLocale, isLocale, localizePath } from "@/i18n/config";
@@ -42,6 +43,13 @@ export async function requireSession(): Promise<SessionPayload> {
 export async function requireCapability(capability: Capability): Promise<SessionPayload> {
   const session = await requireSession();
   if (!can(session, capability)) redirect(await localizedPath("/forbidden"));
+  return session;
+}
+
+/** Module-based guard: the session must have at least `mode` access on `code`. */
+export async function requireModule(code: ModuleCode, mode: ModuleAccess = "read"): Promise<SessionPayload> {
+  const session = await requireSession();
+  if (!canModule(session, code, mode)) redirect(await localizedPath("/forbidden"));
   return session;
 }
 

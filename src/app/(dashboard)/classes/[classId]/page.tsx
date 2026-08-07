@@ -1,4 +1,4 @@
-import { requireSession } from "@/lib/auth/server";
+import { requireModule } from "@/lib/auth/server";
 import { getClassDetail } from "@/lib/students/service";
 import { ClassDashboardPage } from "@/components/class-dashboard-page";
 import { adminClassDetailData } from "@/lib/admin/panels-data";
@@ -6,7 +6,7 @@ import { notFound, redirect } from "next/navigation";
 
 export default async function Page({ params }: { params: Promise<{ classId: string }> }) {
   const { classId } = await params;
-  const session = await requireSession();
+  const session = await requireModule("classes");
   let schoolClass;
   try {
     schoolClass = await getClassDetail(session, classId);

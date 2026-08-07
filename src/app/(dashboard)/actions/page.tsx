@@ -1,4 +1,4 @@
-import { requireSession } from "@/lib/auth/server";
+import { requireModule } from "@/lib/auth/server";
 import { isLeadership } from "@/lib/auth/rbac";
 import { listMyActions, listTemplates } from "@/lib/actions/service";
 import { ActionsPage, type AdminTemplateRow, type AssignableUser } from "@/components/actions-page";
@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db";
 import { ROLES } from "@/lib/domain/enums";
 
 export default async function Page() {
-  const session = await requireSession();
+  const session = await requireModule("actions");
 
   if (isLeadership(session) && session.schoolId) {
     const templates = await listTemplates(session);

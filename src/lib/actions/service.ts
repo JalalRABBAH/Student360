@@ -388,7 +388,7 @@ export async function assignAction(session: SessionPayload, input: AssignActionI
     data: {
       schoolId: assignee.schoolId,
       assigneeUserId: assignee.id,
-    studentId: student?.id ?? undefined,
+      studentId: student?.id ?? null,
       assignedById: session.sub,
       source: actorTeacher ? ACTION_SOURCES.TEACHER : ACTION_SOURCES.ADMIN,
       required: input.required === ACTION_REQUIRED.MANDATORY ? ACTION_REQUIRED.MANDATORY : ACTION_REQUIRED.OPTIONAL,
@@ -405,7 +405,7 @@ export async function assignAction(session: SessionPayload, input: AssignActionI
     action: "ACTION.ASSIGNED",
     entityType: "ActionAssignment",
     entityId: created.id,
-    studentId: student?.id ?? null,
+    studentId: student?.id ?? undefined,
     metadata: { assignee: assignee.id, required: created.required },
   });
   return { ok: true, id: created.id };

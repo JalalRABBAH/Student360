@@ -126,7 +126,7 @@ export async function createStudent(session: SessionPayload, input: CreateStuden
       select: { id: true, student: { select: { id: true } } },
     });
     userId = user.id;
-    studentId = user.student.id;
+    studentId = user.student!.id;
   } catch (error) {
     if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
     throw error;
@@ -185,15 +185,17 @@ export async function createGuardianAndLink(
       roles: { create: { roleCode: ROLES.PARENT, schoolId } },
       guardian: { create: { schoolId, preferredContact: "EMAIL", status: "ACTIVE" } },
     },
-    select: { id: true, guardian: { select: { id: true } } },
+    select: { id: true, email: true, guardian: { select: { id: true } } },
   }).catch((error) => {
     if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
     throw error;
   });
 
+  const guardianId = user.guardian!.id;
+
   await prisma.parentStudentRelationship.create({
     data: {
-      guardianId: user.guardian.id,
+      guardianId,
       studentId: studentRowId,
       relationship: input.relationship || "PARENT",
       isPrimary: input.isPrimary ?? false,
@@ -203,7 +205,7 @@ export async function createGuardianAndLink(
   await audit(session, {
     action: "GUARDIAN.CREATED",
     entityType: "Guardian",
-    entityId: user.guardian.id,
+    entityId: guardianId,
     studentId: studentRowId,
     metadata: { relationship: input.relationship || "PARENT" },
   });
@@ -244,11 +246,13 @@ export async function createParent(session: SessionPayload, input: CreateParentI
       roles: { create: { roleCode: ROLES.PARENT, schoolId } },
       guardian: { create: { schoolId, preferredContact: "EMAIL", status: "ACTIVE" } },
     },
-    select: { id: true, guardian: { select: { id: true } } },
+    select: { id: true, email: true, guardian: { select: { id: true } } },
   }).catch((error) => {
     if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
     throw error;
   });
+
+  const guardianId = user.guardian!.id;
 
   let linked = 0;
   for (const studentId of input.studentIds ?? []) {
@@ -258,14 +262,14 @@ export async function createParent(session: SessionPayload, input: CreateParentI
     });
     if (!student) continue;
     await prisma.parentStudentRelationship.create({
-      data: { guardianId: user.guardian.id, studentId: student.id, relationship: input.relationship || "PARENT", isPrimary: false },
+      data: { guardianId, studentId: student.id, relationship: input.relationship || "PARENT", isPrimary: false },
     });
     linked += 1;
   }
 
-  await audit(session, { action: "PARENT.CREATED", entityType: "Guardian", entityId: user.guardian.id, metadata: { linked } });
+  await audit(session, { action: "PARENT.CREATED", entityType: "Guardian", entityId: guardianId, metadata: { linked } });
 
-  return { userId: user.id, guardianId: user.guardian.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
+  return { userId: user.id, guardianId, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
 }
 
 // ---------------------------------------------------------------------------
@@ -303,21 +307,23 @@ export async function createTeacher(session: SessionPayload, input: CreateTeache
       roles: { create: { roleCode: ROLES.TEACHER, schoolId } },
       teacher: { create: { schoolId, employeeNumber, title: input.title || "Mr.", specialties: input.specialtyCode || null, status: "ACTIVE" } },
     },
-    select: { id: true, teacher: { select: { id: true } } },
+    select: { id: true, email: true, teacher: { select: { id: true } } },
   }).catch((error) => {
     if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
     throw error;
   });
 
+  const teacherId = user.teacher!.id;
+
   for (const classId of input.classIds ?? []) {
     const cls = await prisma.schoolClass.findFirst({ where: { id: classId, schoolId }, select: { id: true } });
     if (!cls) continue;
     await prisma.teacherClassAssignment.create({
-      data: { teacherId: user.teacher.id, classId: cls.id, isHomeroom: false, role: "SUBJECT_TEACHER" },
+      data: { teacherId, classId: cls.id, isHomeroom: false, role: "SUBJECT_TEACHER" },
     });
   }
 
-  await audit(session, { action: "TEACHER.CREATED", entityType: "Teacher", entityId: user.teacher.id, metadata: { employeeNumber, classes: (input.classIds ?? []).length } });
+  await audit(session, { action: "TEACHER.CREATED", entityType: "Teacher", entityId: teacherId, metadata: { employeeNumber, classes: (input.classIds ?? []).length } });
 
   return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword };
 }
@@ -443,10 +449,9 @@ export async function saveTimetableSlot(session: SessionPayload, input: Timetabl
   const cls = await prisma.schoolClass.findFirst({ where: { id: input.classId, schoolId }, select: { id: true } });
   if (!cls) throw new Error("NOT_FOUND");
 
-  if (input.subjectId) {
-    const subject = await prisma.subject.findFirst({ where: { id: input.subjectId, schoolId }, select: { id: true } });
-    if (!subject) throw new Error("NOT_FOUND");
-  }
+  if (!input.subjectId?.trim()) throw new Error("INVALID");
+  const subject = await prisma.subject.findFirst({ where: { id: input.subjectId, schoolId }, select: { id: true } });
+  if (!subject) throw new Error("NOT_FOUND");
   if (input.teacherId) {
     const teacher = await prisma.teacher.findFirst({ where: { id: input.teacherId, schoolId }, select: { id: true } });
     if (!teacher) throw new Error("NOT_FOUND");
@@ -458,7 +463,7 @@ export async function saveTimetableSlot(session: SessionPayload, input: Timetabl
       dayOfWeek: input.dayOfWeek,
       startTime: input.startTime,
       endTime: input.endTime,
-      subjectId: input.subjectId ?? null,
+      subjectId: subject.id,
       teacherId: input.teacherId ?? null,
       room: input.room?.trim() || null,
     },

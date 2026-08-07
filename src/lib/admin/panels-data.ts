@@ -25,7 +25,7 @@ export type AdminPanelsData = {
 export async function adminPanelsData(session: SessionPayload): Promise<AdminPanelsData> {
   const schoolId = session.schoolId;
   const canManage = Boolean(schoolId && (can(session, "student:manage") || can(session, "class:manage")));
-  if (!canManage) {
+  if (!schoolId || !canManage) {
     return { canManage: false, classes: [], students: [], teachers: [], subjects: [], assignments: [] };
   }
 

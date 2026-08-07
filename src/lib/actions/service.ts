@@ -461,7 +461,7 @@ export async function createTemplate(session: SessionPayload, input: TemplateInp
   if (!session.schoolId) throw new Error("FORBIDDEN");
   if (!input.code?.trim() || !input.title?.trim()) throw new Error("INVALID");
   if (!ACTION_TARGET_ROLES.includes(input.targetRole as (typeof ACTION_TARGET_ROLES)[number])) throw new Error("INVALID");
-  if (![ACTION_REQUIRED.MANDATORY, ACTION_REQUIRED.OPTIONAL].includes(input.required)) throw new Error("INVALID");
+  if (!([ACTION_REQUIRED.MANDATORY, ACTION_REQUIRED.OPTIONAL] as string[]).includes(input.required)) throw new Error("INVALID");
   if (!["DAILY", "WEEKLY", "MONTHLY", "ONE_OFF"].includes(input.frequency)) throw new Error("INVALID");
 
   if (input.classId) {

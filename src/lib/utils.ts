@@ -104,19 +104,20 @@ export function formatDateTime(date: Date | string | null | undefined, locale = 
   return `${formatDateShort(date, locale)} · ${formatTime(date, locale)}`;
 }
 
-export function relativeTime(date: Date | string | null | undefined) {
+export function relativeTime(date: Date | string | null | undefined, locale = "en") {
   if (!date) return "–";
   const diff = Date.now() - new Date(date).getTime();
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
   const mins = Math.round(diff / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins} min ago`;
+  if (Math.abs(mins) < 1) return rtf.format(0, "minute");
+  if (Math.abs(mins) < 60) return rtf.format(-mins, "minute");
   const hours = Math.round(mins / 60);
-  if (hours < 24) return `${hours} h ago`;
+  if (Math.abs(hours) < 24) return rtf.format(-hours, "hour");
   const days = Math.round(hours / 24);
-  if (days < 7) return `${days} d ago`;
+  if (Math.abs(days) < 7) return rtf.format(-days, "day");
   const weeks = Math.round(days / 7);
-  if (weeks < 5) return `${weeks} w ago`;
-  return formatDate(date);
+  if (Math.abs(weeks) < 5) return rtf.format(-weeks, "week");
+  return formatDate(date, locale);
 }
 
 export function weekNumber(date: Date | string) {

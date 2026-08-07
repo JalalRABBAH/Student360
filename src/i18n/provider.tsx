@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, type ReactNode } from "react";
 import Link, { type LinkProps } from "next/link";
 import { intlLocale, localizePath, type Locale } from "@/i18n/config";
 import { translateText } from "@/i18n/translations";
@@ -28,6 +28,11 @@ export function I18nProvider({ locale, children }: { locale: Locale; children: R
       formatPercent: (number) => new Intl.NumberFormat(localeTag, { style: "percent", maximumFractionDigits: 1 }).format(number),
       formatDate: (date) => new Intl.DateTimeFormat(localeTag, { dateStyle: "medium" }).format(new Date(date)),
     };
+  }, [locale]);
+
+  useEffect(() => {
+    document.documentElement.lang = locale;
+    document.documentElement.dir = locale === "ar" ? "rtl" : "ltr";
   }, [locale]);
 
   return (

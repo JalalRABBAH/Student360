@@ -7,7 +7,7 @@ import { localeLabels, locales, localizePath, type Locale } from "@/i18n/config"
 import { useI18n } from "@/i18n/provider";
 import { cn } from "@/lib/utils";
 
-export function LanguageSwitcher({ authenticated = true, compact = false }: { authenticated?: boolean; compact?: boolean }) {
+export function LanguageSwitcher({ compact = false }: { compact?: boolean }) {
   const { locale, t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
@@ -23,15 +23,15 @@ export function LanguageSwitcher({ authenticated = true, compact = false }: { au
     setPending(nextLocale);
     setError("");
     try {
-      if (authenticated) {
-        const response = await fetch("/api/account/locale", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ locale: nextLocale }),
-        });
-        if (!response.ok) throw new Error("locale");
-      }
-      router.push(localizePath(pathname, nextLocale));
+      const response = await fetch("/api/account/locale", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ locale: nextLocale }),
+      });
+      if (!response.ok) throw new Error("locale");
+      const target = localizePath(pathname, nextLocale);
+      const query = window.location.search.slice(1);
+      router.push(query ? `${target}?${query}` : target);
       router.refresh();
       setOpen(false);
     } catch {

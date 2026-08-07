@@ -60,7 +60,7 @@ function metricValue(metric: AnalyticsMetric) {
 // ---------------------------------------------------------------------------
 
 function SchoolTrendChart({ data, weeks }: { data: AnalyticsData; weeks: number }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const points = data.trends.slice(-weeks);
   return (
     <Card className="p-5">
@@ -78,7 +78,7 @@ function SchoolTrendChart({ data, weeks }: { data: AnalyticsData; weeks: number 
               <div className="w-1/2 rounded-t bg-sky-400" style={{ height: `${Math.max(4, point.attendance ?? 0)}%` }} title={`${t("Attendance")} ${point.attendance}%`} />
               <div className="w-1/2 rounded-t bg-primary-500" style={{ height: `${Math.max(4, point.homework ?? 0)}%` }} title={`${t("Homework")} ${point.homework}%`} />
             </div>
-            <div className="mt-2 truncate text-center text-[11px] text-slate-400">{formatDateShort(point.periodStart, "en-GB")}</div>
+            <div className="mt-2 truncate text-center text-[11px] text-slate-400">{formatDateShort(point.periodStart, intlLocale(locale))}</div>
           </div>
         ))}
       </div>
@@ -204,7 +204,7 @@ export function AnalyticsPage({ data }: { data: AnalyticsData }) {
 // ---------------------------------------------------------------------------
 
 function EventRow({ event }: { event: LiveEvent }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const tone = event.sentiment === "ATTENTION" ? "attention" : event.sentiment === "POSITIVE" ? "positive" : "info";
   return (
     <div className="relative flex gap-4 pb-5 last:pb-0">
@@ -212,7 +212,7 @@ function EventRow({ event }: { event: LiveEvent }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
           <h4 className="text-sm font-semibold">{event.studentId ? <Link href={`/students/${event.studentId}`} className="hover:text-primary-600 hover:underline">{event.studentName}</Link> : event.studentName} <span className="font-normal text-slate-400">· {t(event.className)}</span></h4>
-          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-400"><Clock3 className="h-3 w-3" />{relativeTime(event.occurredAt)}</span>
+          <span className="inline-flex shrink-0 items-center gap-1 text-xs text-slate-400"><Clock3 className="h-3 w-3" />{relativeTime(event.occurredAt, intlLocale(locale))}</span>
         </div>
         <div className="mt-1 flex flex-wrap items-center gap-2">
           <StatusBadge tone={tone}>{t(EVENT_TYPE_LABELS[event.type] ?? event.type)}</StatusBadge>

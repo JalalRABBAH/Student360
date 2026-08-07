@@ -47,7 +47,7 @@ const attendanceTone: Record<string, "positive" | "attention" | "watch" | "neutr
 // ---------------------------------------------------------------------------
 
 export function TodayPage({ data }: { data: TodayData }) {
-  const { t } = useI18n();
+const { t, locale } = useI18n();
   const slotTone = (status: string) =>
     status === "Completed" ? "positive" : status === "In progress" ? "info" : status === "Next" ? "watch" : "neutral";
   const pulseTone = (s: string) => (s === "POSITIVE" ? "positive" : s === "ATTENTION" ? "attention" : "neutral");
@@ -95,7 +95,7 @@ export function TodayPage({ data }: { data: TodayData }) {
           <div className="mt-5">
             {data.pulse.length ? (
               data.pulse.slice(0, 6).map((event) => (
-                <TimelineItem key={event.id} time={relativeTime(event.occurredAt)} title={event.title} description={event.studentName ?? "—"} tone={pulseTone(event.sentiment)} />
+                <TimelineItem key={event.id} time={relativeTime(event.occurredAt, intlLocale(locale))} title={event.title} description={event.studentName ?? "—"} tone={pulseTone(event.sentiment)} />
               ))
             ) : (
               <p className="py-10 text-center text-sm text-slate-500">{t("No recent events.")}</p>

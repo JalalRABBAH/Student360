@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { SESSION_COOKIE, verifySession } from "@/lib/auth/session";
+import { LOCALE_COOKIE, SESSION_COOKIE, verifySession } from "@/lib/auth/session";
 import { defaultLocale, isLocale, localizePath, type Locale } from "@/i18n/config";
 
-const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/forbidden", "/welcome"];
+const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout", "/api/account/locale", "/forbidden", "/welcome"];
 
 function isPublic(pathname: string) {
   if (PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) return true;
@@ -23,7 +23,12 @@ export async function middleware(request: NextRequest) {
   const session = await verifySession(token);
   const segments = pathname.split("/");
   const urlLocale = isLocale(segments[1]) ? segments[1] : null;
-  const sessionLocale = isLocale(session?.locale) ? session.locale : defaultLocale;
+  const localeCookie = request.cookies.get(LOCALE_COOKIE)?.value;
+  const sessionLocale = isLocale(session?.locale)
+    ? session.locale
+    : isLocale(localeCookie)
+      ? localeCookie
+      : defaultLocale;
   const locale: Locale = urlLocale ?? sessionLocale;
   const internalPath = urlLocale ? `/${segments.slice(2).join("/")}`.replace(/\/$/, "") || "/" : pathname;
 

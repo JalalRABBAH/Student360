@@ -400,7 +400,7 @@ function HelpRequestForm() {
 }
 
 export function HelpPage({ data }: { data: HelpData }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   return (
     <div className="space-y-6">
       <PageHeader title={t("Ask for help")} description={t("Reaching out is a strength. Tell the right adult what would help today.")} />
@@ -419,7 +419,7 @@ export function HelpPage({ data }: { data: HelpData }) {
               data.items.slice(0, 10).map((item) => (
                 <TimelineItem
                   key={item.id}
-                  time={relativeTime(item.createdAt)}
+                  time={relativeTime(item.createdAt, intlLocale(locale))}
                   title={item.title}
                   description={[item.studentName, item.description ?? ""].filter(Boolean).join(" · ")}
                   tone={item.options.length || item.description ? "watch" : "neutral"}

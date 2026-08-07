@@ -21,7 +21,7 @@ export default function ForbiddenPage() {
               <span className="text-primary-600 dark:text-primary-400">360</span>
             </span>
           </Link>
-          <LanguageSwitcher authenticated={false} compact />
+          <LanguageSwitcher compact />
         </div>
 
         <div className="flex flex-col items-center gap-4 pt-4">

@@ -13,8 +13,10 @@ import { useEffect, useState } from "react";
 import { iconMap, type IconName } from "@/components/navigation";
 import { GlobalSearch, NotificationCenter, UserMenu } from "@/components/global-tools";
 import { LanguageSwitcher } from "@/components/language-switcher";
+import { EstablishmentSwitcher } from "@/components/establishment-switcher";
 import { stripLocale } from "@/i18n/config";
 import { useI18n } from "@/i18n/provider";
+import { ROLE_LABELS, type RoleCode } from "@/lib/domain/enums";
 
 export type SessionUser = {
   id: string;
@@ -107,7 +109,7 @@ export function Sidebar({ groups, user, collapsed, onToggleCollapse }: SidebarPr
               <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.roles.map((role) => t(role === "SUPER_ADMIN" ? "Super admin" : role[0] + role.slice(1).toLowerCase())).join(", ")}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}</p>
             </div>
           )}
         </div>
@@ -167,7 +169,7 @@ export function MobileSidebar({ groups, user }: { groups: { label: string; items
               <p className="truncate text-sm font-medium text-slate-900 dark:text-white">
                 {user.firstName} {user.lastName}
               </p>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.roles.map((role) => t(role === "SUPER_ADMIN" ? "Super admin" : role[0] + role.slice(1).toLowerCase())).join(", ")}</p>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">{user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}</p>
             </div>
           </div>
         </div>
@@ -260,12 +262,18 @@ export function AppShell({
   children,
   notifications = [],
   unreadNotifications = 0,
+  managedSchools = [],
+  currentSchoolId = null,
+  showSwitcher = false,
 }: {
   groups: { label: string; items: NavSpec[] }[];
   user: SessionUser;
   children: React.ReactNode;
   notifications?: import("@/lib/notifications/service").AppNotification[];
   unreadNotifications?: number;
+  managedSchools?: { id: string; name: string }[];
+  currentSchoolId?: string | null;
+  showSwitcher?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -280,6 +288,7 @@ export function AppShell({
         notifications={notifications}
         unreadNotifications={unreadNotifications}
       />
+      {showSwitcher && managedSchools.length > 0 ? <EstablishmentSwitcher schools={managedSchools} currentSchoolId={currentSchoolId} /> : null}
       <main
         className={cn(
           "min-h-screen pt-[var(--topbar-height)] transition-all duration-300",

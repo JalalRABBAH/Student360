@@ -11,7 +11,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth/password";
 import type { SessionPayload } from "@/lib/auth/session";
-import { can, hasRole } from "@/lib/auth/rbac";
+import { can, canManageSchool, hasRole } from "@/lib/auth/rbac";
 import { ROLES } from "@/lib/domain/enums";
 import { audit } from "@/lib/auth/audit";
 
@@ -332,7 +332,7 @@ export async function createTeacher(session: SessionPayload, input: CreateTeache
 // Generic account (staff + parent) — create any profile from the admin area
 // ---------------------------------------------------------------------------
 
-export const CREATABLE_ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT"] as const;
+export const CREATABLE_ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT", "SCHOOL_MANAGER"] as const;
 export type CreatableAccountRole = (typeof CREATABLE_ACCOUNT_ROLES)[number];
 
 export type CreateAccountInput = {
@@ -343,13 +343,47 @@ export type CreateAccountInput = {
   title?: string;
   classIds?: string[];
   studentIds?: string[];
+  /** Target establishment (school group manager flow). Defaults to the caller's school. */
+  schoolId?: string | null;
 };
 
 export async function createAccount(session: SessionPayload, input: CreateAccountInput): Promise<CreatedAccount & { role: string }> {
-  const schoolId = requireSchool(session);
   if (!input.firstName?.trim() || !input.lastName?.trim() || !input.email?.trim()) throw new Error("INVALID");
   if (!(CREATABLE_ACCOUNT_ROLES as readonly string[]).includes(input.role)) throw new Error("INVALID");
   const role = input.role as CreatableAccountRole;
+
+  // Group-level manager account (no school binding) — super admin / managers only.
+  if (role === "SCHOOL_MANAGER") {
+    if (!can(session, "establishment:manage")) throw new Error("FORBIDDEN");
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
+    const user = await prisma.user.create({
+      data: {
+        schoolId: null,
+        email: input.email.trim().toLowerCase(),
+        passwordHash,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        locale: "en",
+        theme: "dark",
+        isActive: true,
+        mustReset: true,
+        roles: { create: { roleCode: ROLES.SCHOOL_MANAGER, schoolId: null } },
+      },
+      select: { id: true, email: true },
+    }).catch((error) => {
+      if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+      throw error;
+    });
+    await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role } });
+    return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
+  }
+
+  const targetSchoolId = input.schoolId?.trim() || session.schoolId;
+  if (!targetSchoolId) throw new Error("FORBIDDEN");
+  if (input.schoolId?.trim() && !(await canManageSchool(session, targetSchoolId))) throw new Error("FORBIDDEN");
+  if (!input.schoolId?.trim() && !can(session, "student:manage") && !can(session, "class:manage")) throw new Error("FORBIDDEN");
+  const schoolId = targetSchoolId;
 
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await hashPassword(temporaryPassword);
@@ -379,6 +413,15 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
     if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
     throw error;
   });
+
+  // Admins / principals delegated to an establishment get management access on it.
+  if (role === "ADMIN" || role === "PRINCIPAL") {
+    await prisma.establishmentAccess.upsert({
+      where: { userId_schoolId: { userId: user.id, schoolId } },
+      update: {},
+      create: { userId: user.id, schoolId, role: role === "PRINCIPAL" ? "PRINCIPAL" : "ADMIN" },
+    });
+  }
 
   if (role === "TEACHER" && user.teacher) {
     for (const classId of input.classIds ?? []) {

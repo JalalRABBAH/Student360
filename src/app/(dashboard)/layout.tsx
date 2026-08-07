@@ -8,6 +8,7 @@ import type { RoleCode } from "@/lib/domain/enums";
 import { headers } from "next/headers";
 import { defaultLocale, isLocale, localizePath } from "@/i18n/config";
 import { listNotifications, unreadMessageCount, unreadNotificationCount } from "@/lib/notifications/service";
+import { managedSchoolsFor } from "@/lib/platform/service";
 
 export default async function DashboardLayout({
   children,
@@ -49,6 +50,12 @@ export default async function DashboardLayout({
     unreadMessageCount(session),
   ]);
 
+  const isGroupAdmin = roles.some((role) => ["SCHOOL_MANAGER", "SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role));
+  const managedSchools = isGroupAdmin ? await managedSchoolsFor(session) : [];
+  const showSwitcher =
+    isGroupAdmin &&
+    (roles.includes("SCHOOL_MANAGER") || roles.includes("SUPER_ADMIN") || managedSchools.length > 1);
+
   const navSpecs = navigationForRoles(roles as RoleCode[]).map((group) => ({
     ...group,
     items: group.items.map((item): NavSpec => (item.href === "/messages" && unreadMessages > 0 ? { ...item, badge: unreadMessages } : item)),
@@ -56,7 +63,15 @@ export default async function DashboardLayout({
 
   return (
     <ThemeProvider>
-      <AppShell groups={navSpecs} user={sessionUser} notifications={notifications} unreadNotifications={unreadNotifications}>
+      <AppShell
+        groups={navSpecs}
+        user={sessionUser}
+        notifications={notifications}
+        unreadNotifications={unreadNotifications}
+        managedSchools={managedSchools}
+        currentSchoolId={session.schoolId}
+        showSwitcher={showSwitcher}
+      >
         {children}
       </AppShell>
     </ThemeProvider>

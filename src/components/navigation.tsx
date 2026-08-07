@@ -240,6 +240,29 @@ const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
       ],
     },
   ],
+  SCHOOL_MANAGER: [
+    {
+      label: "Overview",
+      items: [{ label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" }],
+    },
+    {
+      label: "People & Administration",
+      items: [
+        moduleItem("establishments", "/establishments", "Establishments", "School"),
+      ],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [moduleItem("reports", "/reports", "Reports", "FileText")],
+    },
+    {
+      label: "Platform",
+      items: [
+        moduleItem("configuration", "/configuration", "Configuration", "Settings"),
+        moduleItem("permissions", "/permissions", "Modules & Permissions", "KeyRound"),
+      ],
+    },
+  ],
   SUPER_ADMIN: [
     {
       label: "Overview",
@@ -298,9 +321,7 @@ const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
       ],
     },
   ],
-};
-
-/** Primary nav role: SUPER_ADMIN wins, otherwise the first role. */
+};/** Primary nav role: SUPER_ADMIN wins, otherwise the first role. */
 function primaryRole(roles: RoleCode[]): RoleCode {
   return roles.includes("SUPER_ADMIN") ? "SUPER_ADMIN" : (roles[0] ?? "TEACHER");
 }

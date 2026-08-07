@@ -8,7 +8,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { can } from "@/lib/auth/rbac";
+import { can, canManageSchool, hasRole } from "@/lib/auth/rbac";
 import type { SessionPayload } from "@/lib/auth/session";
 import { ROLES, ROLE_LABELS, type RoleCode } from "@/lib/domain/enums";
 import { fullName, initials } from "@/lib/utils";
@@ -235,7 +235,7 @@ function slugify(value: string) {
 }
 
 export async function createEstablishment(session: SessionPayload, input: CreateEstablishmentInput): Promise<CreatedEstablishment> {
-  if (!can(session, "school:configure")) throw new Error("FORBIDDEN");
+  if (!can(session, "school:configure") && !can(session, "establishment:manage")) throw new Error("FORBIDDEN");
   const name = input.name?.trim();
   if (!name) throw new Error("INVALID");
 
@@ -273,5 +273,91 @@ export async function createEstablishment(session: SessionPayload, input: Create
   }
 
   await audit(session, { action: "ESTABLISHMENT.CREATED", entityType: "School", entityId: school.id, metadata: { name: school.name } });
+
+  // The creator manages the new establishment (school group manager flow).
+  await prisma.establishmentAccess.upsert({
+    where: { userId_schoolId: { userId: session.sub, schoolId: school.id } },
+    update: {},
+    create: { userId: session.sub, schoolId: school.id, role: hasRole(session, ROLES.SCHOOL_MANAGER) ? "MANAGER" : "ADMIN" },
+  });
+
   return { ok: true, id: school.id, name: school.name, slug: school.slug };
+}
+
+// ---------------------------------------------------------------------------
+// Managed establishments (for the top switcher + group manager page)
+// ---------------------------------------------------------------------------
+
+export type ManagedEstablishment = {
+  id: string;
+  name: string;
+  slug: string;
+  city: string | null;
+  country: string;
+  role: string;
+  studentCount: number;
+  teacherCount: number;
+  classCount: number;
+};
+
+/** Establishments the caller may manage (own school + EstablishmentAccess; all for SUPER_ADMIN). */
+export async function managedSchoolsFor(session: SessionPayload): Promise<{ id: string; name: string }[]> {
+  if (hasRole(session, ROLES.SUPER_ADMIN)) {
+    const rows = await prisma.school.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }, take: 300 });
+    return rows;
+  }
+
+  const access = await prisma.establishmentAccess.findMany({
+    where: { userId: session.sub },
+    select: { schoolId: true, school: { select: { id: true, name: true } } },
+    orderBy: { school: { name: "asc" } },
+  });
+  const map = new Map<string, { id: string; name: string }>();
+  access.forEach((row) => map.set(row.schoolId, { id: row.school.id, name: row.school.name }));
+
+  if (session.schoolId && !map.has(session.schoolId)) {
+    const own = await prisma.school.findUnique({ where: { id: session.schoolId }, select: { id: true, name: true } });
+    if (own) map.set(own.id, { id: own.id, name: own.name });
+  }
+  return [...map.values()];
+}
+
+/** Detail list for the "Establishments" group-management page. */
+export async function listManagedEstablishments(session: SessionPayload): Promise<ManagedEstablishment[]> {
+  if (!can(session, "establishment:manage") && !can(session, "school:configure")) return [];
+
+  const schools = await managedSchoolsFor(session);
+  if (!schools.length) return [];
+
+  const withCounts = await prisma.establishmentAccess.findMany({
+    where: { userId: session.sub },
+    select: { schoolId: true, role: true },
+  });
+  const roleBySchool = new Map(withCounts.map((row) => [row.schoolId, row.role]));
+
+  const ids = schools.map((s) => s.id);
+  const [students, teachers, classes] = await Promise.all([
+    prisma.student.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),
+    prisma.teacher.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),
+    prisma.schoolClass.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids } }, _count: { _all: true } }),
+  ]);
+  const count = (rows: { schoolId: string; _count: { _all: number } }[], id: string) => rows.find((r) => r.schoolId === id)?._count._all ?? 0;
+
+  const details = await prisma.school.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, name: true, slug: true, city: true, country: true },
+    orderBy: { name: "asc" },
+  });
+
+  return details.map((school) => ({
+    id: school.id,
+    name: school.name,
+    slug: school.slug,
+    city: school.city,
+    country: school.country,
+    role: roleBySchool.get(school.id) ?? "ADMIN",
+    studentCount: count(students, school.id),
+    teacherCount: count(teachers, school.id),
+    classCount: count(classes, school.id),
+  }));
 }

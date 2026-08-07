@@ -18,6 +18,7 @@ export const ROLES = {
   NURSE: "NURSE",
   ADMIN: "ADMIN",
   PRINCIPAL: "PRINCIPAL",
+  SCHOOL_MANAGER: "SCHOOL_MANAGER",
   SUPER_ADMIN: "SUPER_ADMIN",
 } as const;
 
@@ -30,6 +31,7 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
   NURSE: "School nurse",
   ADMIN: "School administration",
   PRINCIPAL: "School management",
+  SCHOOL_MANAGER: "School group manager",
   SUPER_ADMIN: "Platform administrator",
 };
 
@@ -40,11 +42,12 @@ export const ROLE_RANK: Record<RoleCode, number> = {
   NURSE: 35,
   ADMIN: 40,
   PRINCIPAL: 50,
+  SCHOOL_MANAGER: 90,
   SUPER_ADMIN: 100,
 };
 
-export const STAFF_ROLES: RoleCode[] = ["TEACHER", "NURSE", "ADMIN", "PRINCIPAL", "SUPER_ADMIN"];
-export const LEADERSHIP_ROLES: RoleCode[] = ["ADMIN", "PRINCIPAL", "SUPER_ADMIN"];
+export const STAFF_ROLES: RoleCode[] = ["TEACHER", "NURSE", "ADMIN", "PRINCIPAL", "SCHOOL_MANAGER", "SUPER_ADMIN"];
+export const LEADERSHIP_ROLES: RoleCode[] = ["ADMIN", "PRINCIPAL", "SCHOOL_MANAGER", "SUPER_ADMIN"];
 
 // ---------------------------------------------------------------------------
 // Visibility (privacy by design)

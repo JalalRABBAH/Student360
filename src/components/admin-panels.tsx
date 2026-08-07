@@ -519,6 +519,7 @@ const PLAN_OPTIONS = [
 
 export function AdminEstablishmentsPanel() {
   const { t } = useI18n();
+  const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<{ name: string; slug: string } | null>(null);
@@ -536,6 +537,7 @@ export function AdminEstablishmentsPanel() {
     if (data.ok) {
       setCreated({ name: data.name, slug: data.slug });
       setName(""); setCity("");
+      router.refresh();
     } else {
       setError("Could not create the establishment");
     }
@@ -563,6 +565,57 @@ export function AdminEstablishmentsPanel() {
           <div className="mt-1 text-sky-700/70 dark:text-sky-300/70">{created.name} · {created.slug}</div>
         </div>
       ) : null}
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create an administration account for a chosen establishment (group manager)
+// ---------------------------------------------------------------------------
+
+export function AdminSchoolAdminPanel({ schools }: { schools: { id: string; name: string }[] }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ name: string; email: string; password: string }[]>([]);
+
+  const [schoolId, setSchoolId] = useState(schools[0]?.id ?? "");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState("ADMIN");
+
+  async function submit() {
+    setBusy(true); setError(null); setResult([]);
+    const data = await send("/api/admin/accounts", "POST", { firstName, lastName, email, role, schoolId });
+    setBusy(false);
+    if (data.ok) {
+      setResult([{ name: `${data.firstName} ${data.lastName}`, email: data.email, password: data.temporaryPassword }]);
+      setFirstName(""); setLastName(""); setEmail("");
+      router.refresh();
+    } else {
+      setError(data.code === "EMAIL_TAKEN" ? "Email already used" : "Could not create the account");
+    }
+  }
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/10"><UserCog className="h-5 w-5" /></div><div><h2 className="font-bold">{t("Create an administration account")}</h2><p className="text-xs text-slate-500">{t("Creates an account that will manage the chosen establishment.")}</p></div></div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div><Label>{t("Establishment")}</Label>
+          <select value={schoolId} onChange={(e) => setSchoolId(e.target.value)} className={inputClass}>{schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+        <div><Label>{t("Profile")}</Label>
+          <select value={role} onChange={(e) => setRole(e.target.value)} className={inputClass}><option value="ADMIN">{t(ROLE_LABELS.ADMIN)}</option><option value="PRINCIPAL">{t(ROLE_LABELS.PRINCIPAL)}</option></select></div>
+        <div><Label>{t("First name")}</Label><Input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
+        <div><Label>{t("Last name")}</Label><Input value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
+        <div className="sm:col-span-2"><Label>{t("Email")}</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@school.com" /></div>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <Button onClick={submit} disabled={busy || !firstName.trim() || !lastName.trim() || !email.trim() || !schoolId}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("Create account")}</Button>
+        {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+      </div>
+      <CredentialBox title={t("Account created")} accounts={result} />
     </Card>
   );
 }

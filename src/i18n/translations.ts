@@ -1529,3 +1529,14 @@ phrases["Could not create the account"] = { fr: "Impossible de créer le compte"
 phrases["Could not create the establishment"] = { fr: "Impossible de créer l'établissement", ar: "تعذر إنشاء المؤسسة" };
 phrases["Creates a staff or parent account with a temporary password."] = { fr: "Crée un compte personnel ou parent avec un mot de passe temporaire.", ar: "إنشاء حساب موظف أو ولي أمر بكلمة مرور مؤقتة." };
 phrases["Adds a new school to the platform with its own campus and school year."] = { fr: "Ajoute un nouvel établissement à la plateforme avec son campus et son année scolaire.", ar: "إضافة مدرسة جديدة إلى المنصة مع حرمها وسنتها الدراسية." };
+
+// ---------------------------------------------------------------------------
+// School group manager & establishment switcher
+// ---------------------------------------------------------------------------
+phrases["School group manager"] = { fr: "Gestionnaire d'établissements", ar: "مدير المؤسسات" };
+phrases["My establishments"] = { fr: "Mes établissements", ar: "مؤسساتي" };
+phrases["Create an administration account"] = { fr: "Créer un compte administration", ar: "إنشاء حساب إداري" };
+phrases["No establishment yet — create your first school above."] = { fr: "Aucun établissement pour l'instant — créez votre première école ci-dessus.", ar: "لا توجد مؤسسة بعد — أنشئ مدرستك الأولى أعلاه." };
+phrases["Manage the schools in your group: create establishments and delegate administration accounts."] = { fr: "Gérez les écoles de votre groupe : créez des établissements et déléguez des comptes administration.", ar: "أدر مدارس مجموعتك: أنشئ مؤسسات وفوّض حسابات إدارية." };
+phrases["Could not switch establishment"] = { fr: "Impossible de changer d'établissement", ar: "تعذر تغيير المؤسسة" };
+phrases["Creates an account that will manage the chosen establishment."] = { fr: "Crée un compte qui gérera l'établissement choisi.", ar: "إنشاء حساب سيدير المؤسسة المختارة." };

@@ -59,6 +59,7 @@ model School {
   subjects      Subject[]
   classes       SchoolClass[]
   users         User[]
+  establishmentAccess EstablishmentAccess[]
   students      Student[]
   teachers      Teacher[]
   guardians     Guardian[]
@@ -236,6 +237,7 @@ model User {
   auditLogs         AuditLog[]
   eventsActed       ActivityEvent[]     @relation("EventActor")
   assignedActions   ActionAssignment[]  @relation("ActionAssignee")
+  establishmentAccess EstablishmentAccess[] @relation("EstablishmentAccessUser")
 
   @@index([schoolId])
   @@index([email])
@@ -1404,4 +1406,20 @@ model ActionAssignment {
   @@index([schoolId, status])
   @@index([templateId, periodStart])
   @@map("action_assignments")
+}
+
+// Who manages which establishment (school group managers + delegated admins).
+model EstablishmentAccess {
+  id        String   @id @default(cuid())
+  userId    String
+  schoolId  String
+  role      String   @default("ADMIN") // MANAGER | ADMIN | PRINCIPAL
+  createdAt DateTime @default(now())
+
+  user   User   @relation("EstablishmentAccessUser", fields: [userId], references: [id], onDelete: Cascade)
+  school School @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, schoolId])
+  @@index([schoolId])
+  @@map("establishment_access")
 }

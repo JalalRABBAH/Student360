@@ -45,6 +45,7 @@ export const CAPABILITIES = [
   "reports:export",
   "copilot:use",
   "school:configure",
+  "establishment:manage",
   "tenant:manage",
   "audit:read",
 ] as const;
@@ -138,6 +139,35 @@ const ROLE_CAPABILITIES: Record<RoleCode, Capability[]> = {
     "reports:export",
     "copilot:use",
     "school:configure",
+    "audit:read",
+  ],
+  SCHOOL_MANAGER: [
+    "student:read",
+    "student:read_wellbeing",
+    "student:read_emergency",
+    "student:manage",
+    "class:read",
+    "class:manage",
+    "attendance:write",
+    "homework:write",
+    "observation:write",
+    "assessment:write",
+    "goal:write",
+    "intervention:write",
+    "achievement:write",
+    "message:write",
+    "alert:manage",
+    "medical:read",
+    "medical:manage",
+    "discipline:read",
+    "discipline:write",
+    "rating:write",
+    "analytics:class",
+    "analytics:school",
+    "reports:export",
+    "copilot:use",
+    "school:configure",
+    "establishment:manage",
     "audit:read",
   ],
   SUPER_ADMIN: [...CAPABILITIES],
@@ -292,6 +322,20 @@ export async function accessibleClassIds(session: SessionPayload): Promise<strin
 export async function canAccessClass(session: SessionPayload, classId: string) {
   const ids = await accessibleClassIds(session);
   return ids === "ALL" || ids.includes(classId);
+}
+
+/**
+ * Whether the caller may manage a given establishment (school group manager,
+ * delegated admin/principal, own school, or platform admin).
+ */
+export async function canManageSchool(session: SessionPayload, schoolId: string) {
+  if (hasRole(session, ROLES.SUPER_ADMIN)) return true;
+  if (session.schoolId === schoolId) return true;
+  const row = await prisma.establishmentAccess.findFirst({
+    where: { userId: session.sub, schoolId },
+    select: { id: true },
+  });
+  return Boolean(row);
 }
 
 // ---------------------------------------------------------------------------

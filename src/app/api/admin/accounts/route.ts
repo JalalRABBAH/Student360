@@ -22,6 +22,7 @@ export async function POST(req: Request) {
       title: typeof body.title === "string" ? body.title : undefined,
       classIds: Array.isArray(body.classIds) ? body.classIds.map(String) : [],
       studentIds: Array.isArray(body.studentIds) ? body.studentIds.map(String) : [],
+      schoolId: typeof body.schoolId === "string" ? body.schoolId : null,
     });
     return NextResponse.json({ ok: true, ...created });
   } catch (e) {

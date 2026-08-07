@@ -37,7 +37,7 @@ export function EstablishmentSwitcher({
   if (!schools.length) return null;
 
   return (
-    <div className="flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50/80 px-4 py-1.5 dark:border-slate-800 dark:bg-slate-900/50 sm:px-6 lg:px-8">
+    <div className="sticky top-[var(--topbar-height)] z-20 flex items-center gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50/95 px-4 py-1.5 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95 sm:px-6 lg:px-8">
       <span className="me-2 flex shrink-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
         <Building2 className="h-3.5 w-3.5" />
         {t("Establishments")}

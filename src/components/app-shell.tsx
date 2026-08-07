@@ -288,13 +288,13 @@ export function AppShell({
         notifications={notifications}
         unreadNotifications={unreadNotifications}
       />
-      {showSwitcher && managedSchools.length > 0 ? <EstablishmentSwitcher schools={managedSchools} currentSchoolId={currentSchoolId} /> : null}
       <main
         className={cn(
           "min-h-screen pt-[var(--topbar-height)] transition-all duration-300",
           collapsed ? "lg:ps-[var(--sidebar-collapsed)]" : "lg:ps-[var(--sidebar-width)]",
         )}
       >
+        {showSwitcher && managedSchools.length > 0 ? <EstablishmentSwitcher schools={managedSchools} currentSchoolId={currentSchoolId} /> : null}
         <div className="page-container">{children}</div>
       </main>
     </div>

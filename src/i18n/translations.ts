@@ -1546,3 +1546,10 @@ phrases["Confirm delete"] = { fr: "Confirmer la suppression", ar: "تأكيد ا
 phrases["Name already used"] = { fr: "Nom déjà utilisé", ar: "الاسم مستخدم بالفعل" };
 phrases["Could not update the establishment"] = { fr: "Impossible de modifier l'établissement", ar: "تعذر تعديل المؤسسة" };
 phrases["Could not delete the establishment"] = { fr: "Impossible de supprimer l'établissement", ar: "تعذر حذف المؤسسة" };
+
+// ---------------------------------------------------------------------------
+// Module lobby (no sidebar — app launcher dashboard)
+// ---------------------------------------------------------------------------
+phrases["Welcome"] = { fr: "Bienvenue", ar: "مرحباً" };
+phrases["Select a module below to start working."] = { fr: "Sélectionnez un module ci-dessous pour commencer à travailler.", ar: "اختر وحدة أدناه لبدء العمل." };
+phrases["Coming soon"] = { fr: "Prochainement", ar: "قريباً" };

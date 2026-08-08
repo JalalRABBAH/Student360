@@ -292,6 +292,25 @@ async function seedStaff(ctx: SchoolContext) {
   // School nurse (Phase 1)
   const nurse = await createUser(ctx, { first: "Khadija", last: "Berrada", email: "nurse@lesoliviers.edu", role: "NURSE" });
 
+  // School group manager (Phase 2 — macro view across establishments)
+  const manager = await prisma.user.create({
+    data: {
+      id: nid("usr"),
+      schoolId: null,
+      email: "manager@student360.demo",
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      firstName: "Karim",
+      lastName: "El Fassi",
+      locale: "fr",
+      theme: "dark",
+      isActive: true,
+      roles: { create: { id: nid("urole"), roleCode: ROLES.SCHOOL_MANAGER, schoolId: null } },
+    },
+  });
+  await prisma.establishmentAccess.create({
+    data: { userId: manager.id, schoolId: ctx.schoolId, role: "MANAGER" },
+  });
+
   // Teachers
   const teacherUsers: Prisma.TeacherCreateManyInput[] = [];
   let teacherIdx = 1;

@@ -310,7 +310,9 @@ export type ManagedEstablishment = {
 export async function managedSchoolsFor(session: SessionPayload): Promise<{ id: string; name: string }[]> {
   if (hasRole(session, ROLES.SUPER_ADMIN)) {
     const rows = await prisma.school.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }, take: 300 });
-    return rows;
+    // Deduped by id (findMany already unique).
+    const seen = new Set<string>();
+    return rows.filter((row) => { if (seen.has(row.id)) return false; seen.add(row.id); return true; });
   }
 
   const access = await prisma.establishmentAccess.findMany({
@@ -341,7 +343,7 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
   });
   const roleBySchool = new Map(withCounts.map((row) => [row.schoolId, row.role]));
 
-  const ids = schools.map((s) => s.id);
+  const ids = [...new Set(schools.map((s) => s.id))];
   const [students, teachers, classes] = await Promise.all([
     prisma.student.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),
     prisma.teacher.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),

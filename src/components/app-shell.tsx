@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { usePathname } from "next/navigation";
+import { ChevronLeft } from "lucide-react";
 import { LocalizedLink as Link, useI18n } from "@/i18n/provider";
+import { stripLocale } from "@/i18n/config";
 import { cn } from "@/lib/utils";
 import { GlobalSearch, NotificationCenter, UserMenu } from "@/components/global-tools";
 import { LanguageSwitcher } from "@/components/language-switcher";
@@ -29,11 +31,24 @@ function TopBar({
   unreadNotifications?: number;
 }) {
   const { t, href } = useI18n();
+  const pathname = usePathname();
+  const bare = pathname ? stripLocale(pathname) : "";
+  const isDashboard = bare === "/dashboard" || bare === "/dashboard/" || bare === "" || bare === "/";
+
   return (
     <header
       className="fixed inset-x-0 top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 sm:px-6 lg:px-8"
     >
       <div className="flex min-w-0 items-center gap-3">
+        {!isDashboard && (
+          <Link
+            href={href("/dashboard")}
+            className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
+            aria-label={t("Back to dashboard")}
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Link>
+        )}
         <Link href={href("/dashboard")} className="flex shrink-0 items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-bold text-white shadow-sm">
             360

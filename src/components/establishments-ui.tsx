@@ -10,7 +10,7 @@ import { useI18n, LocalizedLink as Link } from "@/i18n/provider";
 import type { ManagedEstablishment } from "@/lib/platform/service";
 
 function roleLabel(role: string, t: (key: string) => string) {
-  if (role === "MANAGER") return t("School group manager");
+  if (role === "MANAGER") return t("Manager");
   if (role === "PRINCIPAL") return t("School management");
   return t("School administration");
 }
@@ -91,7 +91,7 @@ export function EstablishmentsManagementPage({ schools }: { schools: ManagedEsta
                           <Pencil className="h-4 w-4" />
                         </Button>
                         <Button asChild variant="outline" className="flex-1">
-                          <Link href={href("/school")}>{t("Manage")}</Link>
+                          <Link href={href(`/establishments/${school.id}`)}>{t("Manage")}</Link>
                         </Button>
                       </div>
                     </>

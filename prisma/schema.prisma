@@ -38,6 +38,9 @@ model School {
   email     String?
   website   String?
 
+  groupId String?
+  group   SchoolGroup? @relation(fields: [groupId], references: [id])
+
   // Branding
   logoUrl        String?
   primaryColor   String  @default("#16a34a")
@@ -81,6 +84,29 @@ model School {
   meetings       Meeting[]
   actionTemplates  ActionTemplate[]
   actionAssignments ActionAssignment[]
+
+  @@index([status])
+  @@index([groupId])
+}
+
+model SchoolGroup {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  legalName String?
+  country   String   @default("MA")
+  city      String?
+  address   String?
+  phone     String?
+  email     String?
+  website   String?
+  status    String   @default("ACTIVE") // ACTIVE | SUSPENDED | ARCHIVED
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  schools School[]
+  managers User[]
 
   @@index([status])
 }
@@ -206,7 +232,8 @@ model SchoolClass {
 
 model User {
   id           String  @id @default(cuid())
-  schoolId     String? // null for SUPER_ADMIN
+  schoolId     String? // null for SUPER_ADMIN / GROUP_MANAGER
+  groupId      String? // set for GROUP_MANAGER
   email        String  @unique
   passwordHash String
   firstName    String
@@ -222,7 +249,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  school School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  school School?      @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  group  SchoolGroup? @relation(fields: [groupId], references: [id])
 
   roles         UserRole[]
   student       Student?
@@ -240,11 +268,12 @@ model User {
   establishmentAccess EstablishmentAccess[] @relation("EstablishmentAccessUser")
 
   @@index([schoolId])
+  @@index([groupId])
   @@index([email])
 }
 
 model Role {
-  code        String @id // STUDENT | TEACHER | PARENT | ADMIN | PRINCIPAL | SUPER_ADMIN
+  code        String @id // STUDENT | TEACHER | PARENT | ADMIN | PRINCIPAL | SCHOOL_MANAGER | GROUP_MANAGER | SUPER_ADMIN
   name        String
   description String?
   rank        Int    @default(0)

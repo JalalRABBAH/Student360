@@ -167,6 +167,12 @@ const ROLE_CAPABILITIES: Record<RoleCode, Capability[]> = {
     "reports:export",
     "copilot:use",
     "school:configure",
+    "audit:read",
+  ],
+  GROUP_MANAGER: [
+    "analytics:school",
+    "reports:export",
+    "school:configure",
     "establishment:manage",
     "audit:read",
   ],
@@ -331,6 +337,13 @@ export async function canAccessClass(session: SessionPayload, classId: string) {
 export async function canManageSchool(session: SessionPayload, schoolId: string) {
   if (hasRole(session, ROLES.SUPER_ADMIN)) return true;
   if (session.schoolId === schoolId) return true;
+  if (hasRole(session, ROLES.GROUP_MANAGER) && session.groupId) {
+    const school = await prisma.school.findUnique({
+      where: { id: schoolId },
+      select: { groupId: true },
+    });
+    if (school?.groupId === session.groupId) return true;
+  }
   const row = await prisma.establishmentAccess.findFirst({
     where: { userId: session.sub, schoolId },
     select: { id: true },

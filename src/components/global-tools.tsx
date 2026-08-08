@@ -193,7 +193,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
       setLogoutError(t("Could not sign out. Please try again."));
     }
   };
-  const isSchoolManager = user.roles.includes("SCHOOL_MANAGER");
+  const isGroupManager = user.roles.includes("GROUP_MANAGER");
   return (
     <div ref={containerRef} className="relative">
       <button type="button" aria-label={t("Open account menu")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 text-xs font-bold text-white">{initials(user.firstName, user.lastName)}</button>
@@ -207,7 +207,7 @@ export function UserMenu({ user }: { user: SessionUser }) {
             </div>
           </div>
           <div className="border-t border-slate-100 py-2 dark:border-slate-800">
-            {isSchoolManager ? (
+            {isGroupManager ? (
               <>
                 <Link href={href("/establishments")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
                   <Building2 className="h-4 w-4" />

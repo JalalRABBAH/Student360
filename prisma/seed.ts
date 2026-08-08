@@ -89,6 +89,7 @@ const TIME_BLOCKS = [
 // ---------------------------------------------------------------------------
 
 type SchoolContext = {
+  groupId: string;
   schoolId: string;
   yearId: string;
   termId: string;
@@ -122,9 +123,22 @@ async function seedTenant(): Promise<SchoolContext> {
   resetIds();
   resetEmails();
 
+  const schoolGroup = await prisma.schoolGroup.create({
+    data: {
+      id: nid("grp"),
+      name: "Groupe Scolaire Les Oliviers",
+      slug: "les-oliviers-group",
+      legalName: "Groupe Scolaire Les Oliviers SARL",
+      country: "MA",
+      city: "Casablanca",
+      status: "ACTIVE",
+    },
+  });
+
   const school = await prisma.school.create({
     data: {
       id: nid("sch"),
+      groupId: schoolGroup.id,
       name: "Collège International Les Oliviers",
       slug: "les-oliviers",
       legalName: "Groupe Scolaire Les Oliviers SARL",
@@ -218,6 +232,7 @@ async function seedTenant(): Promise<SchoolContext> {
   const competencies = new Map(competenciesData.map((c) => [c.code, { id: c.id, code: c.code, name: c.name }]));
 
   return {
+    groupId: schoolGroup.id,
     schoolId: school.id,
     yearId: academicYear.id,
     termId: currentTerm.id,
@@ -279,7 +294,8 @@ async function seedStaff(ctx: SchoolContext) {
     { code: ROLES.NURSE, name: "School Nurse", rank: 35 },
     { code: ROLES.ADMIN, name: "School Administration", rank: 40 },
     { code: ROLES.PRINCIPAL, name: "School Management", rank: 50 },
-    { code: ROLES.SCHOOL_MANAGER, name: "School Group Manager", rank: 90 },
+    { code: ROLES.SCHOOL_MANAGER, name: "School Manager", rank: 55 },
+    { code: ROLES.GROUP_MANAGER, name: "School Group Manager", rank: 90 },
     { code: ROLES.SUPER_ADMIN, name: "Platform Administrator", rank: 100 },
   ];
   await prisma.role.createMany({ data: roles });
@@ -297,6 +313,7 @@ async function seedStaff(ctx: SchoolContext) {
     data: {
       id: nid("usr"),
       schoolId: null,
+      groupId: ctx.groupId,
       email: "manager@student360.demo",
       passwordHash: await hashPassword(DEMO_PASSWORD),
       firstName: "Karim",
@@ -304,11 +321,30 @@ async function seedStaff(ctx: SchoolContext) {
       locale: "fr",
       theme: "dark",
       isActive: true,
-      roles: { create: { id: nid("urole"), roleCode: ROLES.SCHOOL_MANAGER, schoolId: null } },
+      roles: { create: { id: nid("urole"), roleCode: ROLES.GROUP_MANAGER, schoolId: null } },
     },
   });
   await prisma.establishmentAccess.create({
     data: { userId: manager.id, schoolId: ctx.schoolId, role: "MANAGER" },
+  });
+
+  // Single-establishment manager demo account
+  const schoolManager = await prisma.user.create({
+    data: {
+      id: nid("usr"),
+      schoolId: ctx.schoolId,
+      email: "schoolmanager@lesoliviers.edu",
+      passwordHash: await hashPassword(DEMO_PASSWORD),
+      firstName: "Yasmine",
+      lastName: "Bennis",
+      locale: "fr",
+      theme: "dark",
+      isActive: true,
+      roles: { create: { id: nid("urole"), roleCode: ROLES.SCHOOL_MANAGER, schoolId: ctx.schoolId } },
+    },
+  });
+  await prisma.establishmentAccess.create({
+    data: { userId: schoolManager.id, schoolId: ctx.schoolId, role: "MANAGER" },
   });
 
   // Teachers

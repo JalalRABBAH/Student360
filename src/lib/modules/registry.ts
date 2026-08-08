@@ -203,12 +203,13 @@ export const ROLE_MODULE_ACCESS: Record<string, Partial<Record<ModuleCode, Modul
   SUPER_ADMIN: LEADERSHIP_WRITE,
   ADMIN: LEADERSHIP_WRITE,
   PRINCIPAL: LEADERSHIP_WRITE,
-  SCHOOL_MANAGER: {
+  GROUP_MANAGER: {
     establishments: WRITE,
     configuration: WRITE,
     permissions: WRITE,
     reports: READ,
   },
+  SCHOOL_MANAGER: LEADERSHIP_WRITE,
   TEACHER: {
     students: READ,
     classes: READ,

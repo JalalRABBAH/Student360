@@ -240,7 +240,7 @@ const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
       ],
     },
   ],
-  SCHOOL_MANAGER: [
+  GROUP_MANAGER: [
     {
       label: "Overview",
       items: [{ label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" }],
@@ -254,6 +254,61 @@ const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
     {
       label: "Finance & Reporting",
       items: [moduleItem("reports", "/reports", "Reports", "FileText")],
+    },
+    {
+      label: "Platform",
+      items: [
+        moduleItem("configuration", "/configuration", "Configuration", "Settings"),
+        moduleItem("permissions", "/permissions", "Modules & Permissions", "KeyRound"),
+      ],
+    },
+  ],
+  SCHOOL_MANAGER: [
+    {
+      label: "Overview",
+      items: [{ label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" }],
+    },
+    {
+      label: "People & Administration",
+      items: [
+        moduleItem("establishments", "/school", "Establishments", "School"),
+        moduleItem("students", "/students", "Students", "GraduationCap"),
+        moduleItem("teachers", "/teachers", "Teachers", "Users"),
+        moduleItem("classes", "/classes", "Classes", "LayoutGrid"),
+      ],
+    },
+    {
+      label: "Academic & Curriculum",
+      items: [
+        moduleItem("performance", "/progress", "Student Performance", "BarChart3"),
+        moduleItem("homework", "/homework", "Homework", "BookOpen"),
+        moduleItem("assessments", "/assessments", "Assessments", "FileText"),
+        moduleItem("observations", "/observations", "Observations", "ClipboardList"),
+        moduleItem("programs", "/modules/programs", "Programs", "Library"),
+        moduleItem("levels", "/modules/levels", "Levels & Subjects", "Layers"),
+      ],
+    },
+    {
+      label: "Operations & Campus",
+      items: [
+        moduleItem("calendar", "/today", "Calendar", "CalendarDays"),
+        moduleItem("attendance", "/attendance", "Attendance", "Clock"),
+        moduleItem("actions", "/actions", "Actions", "CheckCircle2"),
+        moduleItem("rules", "/modules/rules", "Internal Rules", "ScrollText"),
+        moduleItem("canteen", "/modules/canteen", "Canteen", "Utensils"),
+        moduleItem("transport", "/modules/transport", "Transport", "Bus"),
+      ],
+    },
+    {
+      label: "Communication & Community",
+      items: [moduleItem("messaging", "/messages", "Messaging", "MessageSquare")],
+    },
+    {
+      label: "Finance & Reporting",
+      items: [
+        moduleItem("finance", "/modules/finance", "Finance & Fees", "Wallet"),
+        moduleItem("reports", "/reports", "Reports", "FileText"),
+      ],
     },
     {
       label: "Platform",

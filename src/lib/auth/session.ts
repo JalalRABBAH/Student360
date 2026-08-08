@@ -15,6 +15,7 @@ export type SessionPayload = {
   avatarUrl?: string | null;
   schoolId: string | null;
   schoolName?: string | null;
+  groupId?: string | null;
   roles: RoleCode[];
   activeRole: RoleCode;
   /** linked domain ids for fast authorisation */

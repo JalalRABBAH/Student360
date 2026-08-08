@@ -1533,7 +1533,8 @@ phrases["Adds a new school to the platform with its own campus and school year."
 // ---------------------------------------------------------------------------
 // School group manager & establishment switcher
 // ---------------------------------------------------------------------------
-phrases["School group manager"] = { fr: "Gestionnaire d'établissements", ar: "مدير المؤسسات" };
+phrases["School group manager"] = { fr: "Gestionnaire du groupe scolaire", ar: "مدير المجموعة المدرسية" };
+phrases["School manager"] = { fr: "Gestionnaire d'établissement", ar: "مدير المؤسسة" };
 phrases["My establishments"] = { fr: "Mes établissements", ar: "مؤسساتي" };
 phrases["Create an administration account"] = { fr: "Créer un compte administration", ar: "إنشاء حساب إداري" };
 phrases["No establishment yet — create your first school above."] = { fr: "Aucun établissement pour l'instant — créez votre première école ci-dessus.", ar: "لا توجد مؤسسة بعد — أنشئ مدرستك الأولى أعلاه." };
@@ -1546,6 +1547,11 @@ phrases["Confirm delete"] = { fr: "Confirmer la suppression", ar: "تأكيد ا
 phrases["Name already used"] = { fr: "Nom déjà utilisé", ar: "الاسم مستخدم بالفعل" };
 phrases["Could not update the establishment"] = { fr: "Impossible de modifier l'établissement", ar: "تعذر تعديل المؤسسة" };
 phrases["Could not delete the establishment"] = { fr: "Impossible de supprimer l'établissement", ar: "تعذر حذف المؤسسة" };
+phrases["Supervision view for this establishment. Detailed operations remain with the school administration."] = { fr: "Vue de supervision de cet établissement. Les opérations détaillées restent du ressort de l'administration scolaire.", ar: "عرض الإشراف لهذه المؤسسة. العمليات التفصيلية تبقى مسؤولية الإدارة المدرسية." };
+phrases["Establishment information"] = { fr: "Informations de l'établissement", ar: "معلومات المؤسسة" };
+phrases["Back to my establishments"] = { fr: "Retour à mes établissements", ar: "العودة إلى مؤسساتي" };
+phrases["Manager"] = { fr: "Gestionnaire", ar: "المدير" };
+phrases["Not assigned"] = { fr: "Non affecté", ar: "غير معين" };
 
 // ---------------------------------------------------------------------------
 // Module lobby (no sidebar — app launcher dashboard)

@@ -253,12 +253,15 @@ export async function createEstablishment(session: SessionPayload, input: Create
   const now = new Date();
   const yearName = `${now.getFullYear()}-${now.getFullYear() + 1}`;
 
+  const groupId = hasRole(session, ROLES.GROUP_MANAGER) ? session.groupId : null;
+
   let school: { id: string; name: string; slug: string };
   try {
     school = await prisma.school.create({
       data: {
         name,
         slug: candidate,
+        groupId,
         city: input.city?.trim() || null,
         country: input.country?.trim() || "MA",
         plan: input.plan || "PRO",
@@ -282,7 +285,7 @@ export async function createEstablishment(session: SessionPayload, input: Create
   await prisma.establishmentAccess.upsert({
     where: { userId_schoolId: { userId: session.sub, schoolId: school.id } },
     update: {},
-    create: { userId: session.sub, schoolId: school.id, role: hasRole(session, ROLES.SCHOOL_MANAGER) ? "MANAGER" : "ADMIN" },
+    create: { userId: session.sub, schoolId: school.id, role: hasRole(session, ROLES.GROUP_MANAGER) ? "MANAGER" : "ADMIN" },
   });
 
   return { ok: true, id: school.id, name: school.name, slug: school.slug };
@@ -306,11 +309,22 @@ export type ManagedEstablishment = {
   classCount: number;
 };
 
-/** Establishments the caller may manage (own school + EstablishmentAccess; all for SUPER_ADMIN). */
+/** Establishments the caller may manage (own school + EstablishmentAccess; group schools for GROUP_MANAGER; all for SUPER_ADMIN). */
 export async function managedSchoolsFor(session: SessionPayload): Promise<{ id: string; name: string }[]> {
   if (hasRole(session, ROLES.SUPER_ADMIN)) {
     const rows = await prisma.school.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" }, take: 300 });
     // Deduped by id (findMany already unique).
+    const seen = new Set<string>();
+    return rows.filter((row) => { if (seen.has(row.id)) return false; seen.add(row.id); return true; });
+  }
+
+  if (hasRole(session, ROLES.GROUP_MANAGER) && session.groupId) {
+    const rows = await prisma.school.findMany({
+      where: { groupId: session.groupId },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+      take: 300,
+    });
     const seen = new Set<string>();
     return rows.filter((row) => { if (seen.has(row.id)) return false; seen.add(row.id); return true; });
   }
@@ -342,6 +356,9 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
     select: { schoolId: true, role: true },
   });
   const roleBySchool = new Map(withCounts.map((row) => [row.schoolId, row.role]));
+  if (hasRole(session, ROLES.GROUP_MANAGER)) {
+    schools.forEach((s) => { if (!roleBySchool.has(s.id)) roleBySchool.set(s.id, "MANAGER"); });
+  }
 
   const ids = [...new Set(schools.map((s) => s.id))];
   const [students, teachers, classes] = await Promise.all([

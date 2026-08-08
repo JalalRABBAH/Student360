@@ -58,14 +58,14 @@ function TopBar({
           </span>
         </Link>
         <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
-        {user.roles.includes("SCHOOL_MANAGER") ? (
+        {user.roles.includes("GROUP_MANAGER") ? (
           <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm sm:flex">
             <span className="truncate font-semibold text-slate-900 dark:text-white">
               {user.firstName} {user.lastName}
             </span>
             <span className="text-slate-300 dark:text-slate-700">·</span>
             <span className="truncate text-slate-500 dark:text-slate-400">
-              {t(ROLE_LABELS.SCHOOL_MANAGER)}
+              {t(ROLE_LABELS.GROUP_MANAGER)}
             </span>
             <span className="text-slate-300 dark:text-slate-700">·</span>
             <Link

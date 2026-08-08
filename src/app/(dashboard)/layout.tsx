@@ -48,11 +48,11 @@ export default async function DashboardLayout({
     unreadNotificationCount(session),
   ]);
 
-  const isGroupAdmin = roles.some((role) => ["SCHOOL_MANAGER", "SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role));
+  const isGroupAdmin = roles.some((role) => ["GROUP_MANAGER", "SUPER_ADMIN", "ADMIN", "PRINCIPAL"].includes(role));
   const managedSchools = isGroupAdmin ? await managedSchoolsFor(session) : [];
   const showSwitcher =
     isGroupAdmin &&
-    (roles.includes("SCHOOL_MANAGER") || roles.includes("SUPER_ADMIN") || managedSchools.length > 1);
+    (roles.includes("SUPER_ADMIN") || managedSchools.length > 1);
 
   return (
     <ThemeProvider>

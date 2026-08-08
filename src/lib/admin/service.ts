@@ -332,7 +332,7 @@ export async function createTeacher(session: SessionPayload, input: CreateTeache
 // Generic account (staff + parent) — create any profile from the admin area
 // ---------------------------------------------------------------------------
 
-export const CREATABLE_ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT", "SCHOOL_MANAGER"] as const;
+export const CREATABLE_ACCOUNT_ROLES = ["ADMIN", "PRINCIPAL", "TEACHER", "NURSE", "PARENT", "SCHOOL_MANAGER", "GROUP_MANAGER"] as const;
 export type CreatableAccountRole = (typeof CREATABLE_ACCOUNT_ROLES)[number];
 
 export type CreateAccountInput = {
@@ -353,13 +353,14 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
   const role = input.role as CreatableAccountRole;
 
   // Group-level manager account (no school binding) — super admin / managers only.
-  if (role === "SCHOOL_MANAGER") {
+  if (role === "GROUP_MANAGER") {
     if (!can(session, "establishment:manage")) throw new Error("FORBIDDEN");
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     const user = await prisma.user.create({
       data: {
         schoolId: null,
+        groupId: session.groupId,
         email: input.email.trim().toLowerCase(),
         passwordHash,
         firstName: input.firstName.trim(),
@@ -368,7 +369,7 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
         theme: "dark",
         isActive: true,
         mustReset: true,
-        roles: { create: { roleCode: ROLES.SCHOOL_MANAGER, schoolId: null } },
+        roles: { create: { roleCode: ROLES.GROUP_MANAGER, schoolId: null } },
       },
       select: { id: true, email: true },
     }).catch((error) => {
@@ -376,6 +377,38 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
       throw error;
     });
     await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role } });
+    return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
+  }
+
+  // Single-establishment manager account.
+  if (role === "SCHOOL_MANAGER") {
+    const targetSchoolId = input.schoolId?.trim() || session.schoolId;
+    if (!targetSchoolId) throw new Error("FORBIDDEN");
+    if (!(await canManageSchool(session, targetSchoolId))) throw new Error("FORBIDDEN");
+    const temporaryPassword = generateTemporaryPassword();
+    const passwordHash = await hashPassword(temporaryPassword);
+    const user = await prisma.user.create({
+      data: {
+        schoolId: targetSchoolId,
+        email: input.email.trim().toLowerCase(),
+        passwordHash,
+        firstName: input.firstName.trim(),
+        lastName: input.lastName.trim(),
+        locale: "en",
+        theme: "dark",
+        isActive: true,
+        mustReset: true,
+        roles: { create: { roleCode: ROLES.SCHOOL_MANAGER, schoolId: targetSchoolId } },
+      },
+      select: { id: true, email: true },
+    }).catch((error) => {
+      if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
+      throw error;
+    });
+    await prisma.establishmentAccess.create({
+      data: { userId: user.id, schoolId: targetSchoolId, role: "MANAGER" },
+    }).catch(() => {});
+    await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role, schoolId: targetSchoolId } });
     return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
   }
 

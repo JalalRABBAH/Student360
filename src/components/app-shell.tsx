@@ -58,14 +58,33 @@ function TopBar({
           </span>
         </Link>
         <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
-        <div className="hidden items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:flex">
-          <span className="text-slate-400">{user.schoolName ?? ""}</span>
-          {user.roles.length ? (
-            <span className="text-slate-400">
-              · {user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}
+        {user.roles.includes("SCHOOL_MANAGER") ? (
+          <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm sm:flex">
+            <span className="truncate font-semibold text-slate-900 dark:text-white">
+              {user.firstName} {user.lastName}
             </span>
-          ) : null}
-        </div>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <span className="truncate text-slate-500 dark:text-slate-400">
+              {t(ROLE_LABELS.SCHOOL_MANAGER)}
+            </span>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <Link
+              href={href("/establishments")}
+              className="truncate text-xs font-semibold text-primary-600 hover:underline dark:text-primary-400"
+            >
+              {t("My establishments")}
+            </Link>
+          </div>
+        ) : (
+          <div className="hidden items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:flex">
+            <span className="text-slate-400">{user.schoolName ?? ""}</span>
+            {user.roles.length ? (
+              <span className="text-slate-400">
+                · {user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}
+              </span>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="ms-auto flex items-center gap-2 sm:gap-3">

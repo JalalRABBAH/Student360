@@ -2,7 +2,7 @@
 
 import { LocalizedLink as Link } from "@/i18n/provider";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Check, ChevronRight, LogOut, Search, UserRound, X } from "lucide-react";
+import { Bell, Building2, Check, ChevronRight, FileText, KeyRound, LogOut, Search, Settings, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, initials } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
@@ -193,10 +193,57 @@ export function UserMenu({ user }: { user: SessionUser }) {
       setLogoutError(t("Could not sign out. Please try again."));
     }
   };
+  const isSchoolManager = user.roles.includes("SCHOOL_MANAGER");
   return (
     <div ref={containerRef} className="relative">
       <button type="button" aria-label={t("Open account menu")} aria-expanded={open} onClick={() => setOpen((value) => !value)} className="grid h-9 w-9 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-indigo-600 text-xs font-bold text-white">{initials(user.firstName, user.lastName)}</button>
-      {open ? <div className="absolute end-0 top-12 z-[70] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-950"><div className="p-3"><div className="font-semibold">{user.firstName} {user.lastName}</div><div className="truncate text-xs text-slate-500">{user.email}</div><div className="mt-2 text-[10px] font-semibold uppercase text-primary-600">{user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}</div></div><div className="border-t border-slate-100 py-2 dark:border-slate-800"><Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900"><UserRound className="h-4 w-4" />{t("Account preferences")}</Link><div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm"><span>{t("Language")}</span><LanguageSwitcher compact /></div><button type="button" disabled={signingOut} onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/5"><LogOut className="h-4 w-4" />{signingOut ? t("Signing out…") : t("Sign out")}</button>{logoutError ? <p className="px-3 py-1 text-xs text-rose-600">{logoutError}</p> : null}</div></div> : null}
+      {open ? (
+        <div className="absolute end-0 top-12 z-[70] w-64 rounded-2xl border border-slate-200 bg-white p-2 shadow-2xl dark:border-slate-800 dark:bg-slate-950">
+          <div className="p-3">
+            <div className="font-semibold">{user.firstName} {user.lastName}</div>
+            <div className="truncate text-xs text-slate-500">{user.email}</div>
+            <div className="mt-2 text-[10px] font-semibold uppercase text-primary-600">
+              {user.roles.map((role) => t(ROLE_LABELS[role as RoleCode])).join(", ")}
+            </div>
+          </div>
+          <div className="border-t border-slate-100 py-2 dark:border-slate-800">
+            {isSchoolManager ? (
+              <>
+                <Link href={href("/establishments")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <Building2 className="h-4 w-4" />
+                  {t("My establishments")}
+                </Link>
+                <Link href={href("/reports")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <FileText className="h-4 w-4" />
+                  {t("Reports")}
+                </Link>
+                <Link href={href("/permissions")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <KeyRound className="h-4 w-4" />
+                  {t("Modules & Permissions")}
+                </Link>
+                <Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <Settings className="h-4 w-4" />
+                  {t("Configuration")}
+                </Link>
+              </>
+            ) : (
+              <Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                <UserRound className="h-4 w-4" />
+                {t("Account preferences")}
+              </Link>
+            )}
+            <div className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm">
+              <span>{t("Language")}</span>
+              <LanguageSwitcher compact />
+            </div>
+            <button type="button" disabled={signingOut} onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-rose-600 hover:bg-rose-50 disabled:opacity-60 dark:hover:bg-rose-500/5">
+              <LogOut className="h-4 w-4" />
+              {signingOut ? t("Signing out…") : t("Sign out")}
+            </button>
+            {logoutError ? <p className="px-3 py-1 text-xs text-rose-600">{logoutError}</p> : null}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -70,10 +70,12 @@ export async function verifySession(token: string | undefined | null): Promise<S
 }
 
 export function cookieOptions() {
+  const publicUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+  const isHttpsPublicUrl = publicUrl.startsWith("https://");
   return {
     httpOnly: true,
     sameSite: "lax" as const,
-    secure: process.env.NODE_ENV === "production",
+    secure: process.env.NODE_ENV === "production" && isHttpsPublicUrl,
     path: "/",
     maxAge: sessionMaxAge(),
   };

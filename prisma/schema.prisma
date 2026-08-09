@@ -102,13 +102,54 @@ model SchoolGroup {
   website   String?
   status    String   @default("ACTIVE") // ACTIVE | SUSPENDED | ARCHIVED
 
+  // Seats-based subscription: price per seat used to compute each billing cycle.
+  pricePerSeat Int @default(25)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   schools School[]
   managers User[]
+  billing GroupBilling[]
 
   @@index([status])
+}
+
+model GroupBilling {
+  id      String @id @default(cuid())
+  groupId String
+  period  String // "2026-01" — one cycle per group per period
+  status  String @default("PENDING") // PENDING | PAID | OVERDUE
+  amount  Int    @default(0)
+  pdfFileId String?
+  dueDate DateTime?
+  paidAt  DateTime?
+  note    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group    SchoolGroup   @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  payments GroupPayment[]
+
+  @@unique([groupId, period])
+  @@index([groupId, status])
+}
+
+model GroupPayment {
+  id        String @id @default(cuid())
+  billingId String
+  type      String // add | charge | refund | credit
+  amount    Int
+  note      String?
+  pdfFileId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  billing GroupBilling @relation(fields: [billingId], references: [id], onDelete: Cascade)
+
+  @@index([billingId])
 }
 
 model Campus {

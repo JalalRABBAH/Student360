@@ -52,6 +52,8 @@ export default async function DashboardLayout({
   const managedSchools = isGroupAdmin ? await managedSchoolsFor(session) : [];
   const showSwitcher =
     isGroupAdmin &&
+    !roles.includes("GROUP_MANAGER") &&
+    !roles.includes("SCHOOL_MANAGER") &&
     (roles.includes("SUPER_ADMIN") || managedSchools.length > 1);
 
   return (

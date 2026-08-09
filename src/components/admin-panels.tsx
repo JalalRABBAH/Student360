@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Building2, CalendarDays, Loader2, Pencil, Plus, Trash2, UserCog, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sheet, SheetTrigger, SheetContent, SheetClose } from "@/components/ui/sheet";
+import { StatusBadge } from "@/components/demo-ui";
 import { useI18n } from "@/i18n/provider";
 import { ROLE_LABELS } from "@/lib/domain/enums";
+import type { ManagedEstablishment } from "@/lib/platform/service";
 
 export type AdminClassOption = { id: string; name: string };
 export type AdminStudentOption = { id: string; name: string };
@@ -25,7 +28,7 @@ export type TimetableSlotRow = {
   room: string | null;
 };
 
-async function send(url: string, method: string, body?: unknown) {
+export async function send(url: string, method: string, body?: unknown) {
   const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   return res.json().catch(() => ({}));
 }
@@ -704,5 +707,292 @@ export function AdminSchoolAdminPanel({ schools }: { schools: { id: string; name
       </div>
       <CredentialBox title={t("Account created")} accounts={result} />
     </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Create an establishment — group manager drawer
+// ---------------------------------------------------------------------------
+
+export function CreateEstablishmentSheet() {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<{ name: string; slug: string } | null>(null);
+
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("MA");
+  const [plan, setPlan] = useState("PRO");
+  const [seatsLimit, setSeatsLimit] = useState("500");
+
+  function reset() {
+    setName("");
+    setCity("");
+    setCountry("MA");
+    setPlan("PRO");
+    setSeatsLimit("500");
+    setCreated(null);
+    setError(null);
+  }
+
+  async function submit() {
+    setBusy(true); setError(null); setCreated(null);
+    const data = await send("/api/admin/establishments", "POST", {
+      name, city: city || null, country, plan, seatsLimit: Number(seatsLimit) || 500,
+    });
+    setBusy(false);
+    if (data.ok) {
+      setCreated({ name: data.name, slug: data.slug });
+      reset();
+      router.refresh();
+      setOpen(false);
+    } else {
+      setError(data.code === "NAME_TAKEN" ? "Name already used" : "Could not create the establishment");
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <Button size="sm">
+          <Plus className="mr-1 h-4 w-4" />
+          {t("New establishment")}
+        </Button>
+      </SheetTrigger>
+      <SheetContent className="w-full sm:max-w-md">
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-lg font-bold">{t("Create an establishment")}</h2>
+            <p className="text-xs text-slate-500">{t("Adds a new school to the platform with its own campus and school year.")}</p>
+          </div>
+          <div className="space-y-3">
+            <div><Label>{t("School name")}</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Lycée Al Amal" /></div>
+            <div><Label>{t("City")}</Label><Input value={city} onChange={(e) => setCity(e.target.value)} /></div>
+            <div><Label>{t("Country")}</Label>
+              <select value={country} onChange={(e) => setCountry(e.target.value)} className={inputClass}>{COUNTRY_OPTIONS.map((c) => <option key={c.code} value={c.code}>{t(c.label)}</option>)}</select></div>
+            <div><Label>{t("Plan")}</Label>
+              <select value={plan} onChange={(e) => setPlan(e.target.value)} className={inputClass}>{PLAN_OPTIONS.map((p) => <option key={p.code} value={p.code}>{t(p.label)}</option>)}</select></div>
+            <div><Label>{t("Seats limit")}</Label><Input type="number" value={seatsLimit} onChange={(e) => setSeatsLimit(e.target.value)} /></div>
+          </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={submit} disabled={busy || !name.trim()}>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("Create establishment")}</Button>
+            <SheetClose asChild><Button variant="ghost">{t("Cancel")}</Button></SheetClose>
+          </div>
+          {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+          {created ? (
+            <div className="rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs dark:border-sky-500/30 dark:bg-sky-500/10">
+              <div className="font-semibold text-sky-700 dark:text-sky-300">{t("Establishment created")}</div>
+              <div className="mt-1 text-sky-700/70 dark:text-sky-300/70">{created.name} · {created.slug}</div>
+            </div>
+          ) : null}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Establishment managers delegation panel
+// ---------------------------------------------------------------------------
+
+function managerRoleLabel(role: string, t: (key: string) => string) {
+  if (role === "MANAGER" || role === "SCHOOL_MANAGER") return t("School manager");
+  if (role === "PRINCIPAL") return t("School management");
+  return t("School administration");
+}
+
+export function EstablishmentManagersPanel({ schools }: { schools: ManagedEstablishment[] }) {
+  const { t } = useI18n();
+  const [assigningSchoolId, setAssigningSchoolId] = useState<string | null>(null);
+
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-violet-50 text-violet-600 dark:bg-violet-500/10"><UserCog className="h-5 w-5" /></div>
+        <div>
+          <h2 className="font-bold">{t("Establishment managers")}</h2>
+          <p className="text-xs text-slate-500">{t("Assign or change the managers and administrators of each establishment.")}</p>
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="text-[11px] uppercase tracking-wide text-slate-400">
+            <tr><th className="px-2 py-2">{t("Establishment")}</th><th className="px-2 py-2">{t("Managers")}</th><th className="px-2 py-2" /></tr>
+          </thead>
+          <tbody>
+            {schools.map((school) => (
+              <tr key={school.id} className="border-t border-slate-100 dark:border-slate-800">
+                <td className="px-2 py-2 font-semibold">{school.name}</td>
+                <td className="px-2 py-2">
+                  {school.managers.length ? (
+                    <div className="space-y-1">
+                      {school.managers.map((manager) => (
+                        <div key={manager.id} className="flex items-center gap-2 text-xs">
+                          <span>{manager.firstName} {manager.lastName}</span>
+                          <StatusBadge tone={manager.accessRole === "ADMIN" ? "neutral" : "info"}>{managerRoleLabel(manager.accessRole, t)}</StatusBadge>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-slate-500">{t("Not assigned")}</span>
+                  )}
+                </td>
+                <td className="px-2 py-2 text-end">
+                  <Button size="sm" variant="outline" onClick={() => setAssigningSchoolId(school.id)}>{t("Assign")}</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <AssignManagerSheet
+        schoolId={assigningSchoolId}
+        schools={schools.map((s) => ({ id: s.id, name: s.name }))}
+        onClose={() => setAssigningSchoolId(null)}
+      />
+    </Card>
+  );
+}
+
+type Candidate = { id: string; name: string; email: string; roles: string[] };
+
+export function AssignManagerSheet({
+  schoolId,
+  schools,
+  onClose,
+}: {
+  schoolId: string | null;
+  schools: { id: string; name: string }[];
+  onClose: () => void;
+}) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<{ name: string; email: string; password: string } | null>(null);
+
+  const [selectedSchoolId, setSelectedSchoolId] = useState(schoolId ?? schools[0]?.id ?? "");
+  const [role, setRole] = useState<"PRINCIPAL" | "ADMIN">("PRINCIPAL");
+  const [mode, setMode] = useState<"existing" | "new">("existing");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [candidateId, setCandidateId] = useState("");
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+
+  useEffect(() => {
+    setSelectedSchoolId(schoolId ?? schools[0]?.id ?? "");
+  }, [schoolId, schools]);
+
+  useEffect(() => {
+    if (mode !== "existing" || !selectedSchoolId) {
+      setCandidates([]);
+      setCandidateId("");
+      return;
+    }
+    let cancelled = false;
+    setLoadingCandidates(true);
+    send(`/api/admin/establishment-managers?schoolId=${encodeURIComponent(selectedSchoolId)}&role=${role}`, "GET")
+      .then((data) => {
+        if (cancelled) return;
+        const list = (data.candidates ?? []) as Candidate[];
+        setCandidates(list);
+        setCandidateId(list[0]?.id ?? "");
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCandidates(false);
+      });
+    return () => { cancelled = true; };
+  }, [mode, selectedSchoolId, role]);
+
+  useEffect(() => {
+    const selected = candidates.find((c) => c.id === candidateId);
+    setEmail(selected?.email ?? "");
+  }, [candidateId, candidates]);
+
+  function reset() {
+    setFirstName(""); setLastName(""); setEmail(""); setCandidateId(""); setCandidates([]); setError(null); setResult(null);
+  }
+
+  async function submit() {
+    setBusy(true); setError(null); setResult(null);
+    const data = await send("/api/admin/establishment-managers", "POST", {
+      schoolId: selectedSchoolId, role, mode, firstName, lastName, email,
+    });
+    setBusy(false);
+    if (data.ok) {
+      if (data.temporaryPassword) {
+        setResult({ name: `${data.firstName} ${data.lastName}`, email: data.email, password: data.temporaryPassword });
+      }
+      reset();
+      router.refresh();
+      if (!data.temporaryPassword) onClose();
+    } else {
+      setError(data.code === "EMAIL_TAKEN" ? "Email already used" : data.code === "NOT_FOUND" ? "No account found with this email" : "Could not assign manager");
+    }
+  }
+
+  return (
+    <Sheet open={!!schoolId} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent className="w-full sm:max-w-md">
+        <div className="space-y-5">
+          <div>
+            <h2 className="text-lg font-bold">{t("Assign a manager")}</h2>
+            <p className="text-xs text-slate-500">{t("Assign a director or a school administration manager to the chosen establishment.")}</p>
+          </div>
+
+          <div className="space-y-3">
+            <div><Label>{t("Establishment")}</Label>
+              <select value={selectedSchoolId} onChange={(e) => setSelectedSchoolId(e.target.value)} className={inputClass}>
+                {schools.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+            <div><Label>{t("Profile")}</Label>
+              <select value={role} onChange={(e) => setRole(e.target.value as "PRINCIPAL" | "ADMIN")} className={inputClass}>
+                <option value="PRINCIPAL">{t(ROLE_LABELS.PRINCIPAL)}</option>
+                <option value="ADMIN">{t(ROLE_LABELS.ADMIN)}</option>
+              </select>
+            </div>
+            <div><Label>{t("Account source")}</Label>
+              <select value={mode} onChange={(e) => setMode(e.target.value as "existing" | "new")} className={inputClass}>
+                <option value="existing">{t("Use an existing account")}</option>
+                <option value="new">{t("Create a new account")}</option>
+              </select>
+            </div>
+            {mode === "existing" ? (
+              <div>
+                <Label>{t("Existing account")}</Label>
+                <select value={candidateId} onChange={(e) => setCandidateId(e.target.value)} className={inputClass}>
+                  {loadingCandidates ? <option>{t("Loading…")}</option> : candidates.length ? candidates.map((c) => <option key={c.id} value={c.id}>{c.name} · {c.email}</option>) : <option value="">{t("No account available")}</option>}
+                </select>
+                {candidateId ? <div className="mt-1 text-xs text-slate-500">{email}</div> : null}
+              </div>
+            ) : (
+              <>
+                <div><Label>{t("First name")}</Label><Input value={firstName} onChange={(e) => setFirstName(e.target.value)} /></div>
+                <div><Label>{t("Last name")}</Label><Input value={lastName} onChange={(e) => setLastName(e.target.value)} /></div>
+                <div><Label>{t("Email")}</Label><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="manager@school.com" /></div>
+              </>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button onClick={submit} disabled={busy || !email.trim() || !selectedSchoolId || (mode === "new" && (!firstName.trim() || !lastName.trim()))}>
+              {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {t("Assign")}
+            </Button>
+            <SheetClose asChild><Button variant="ghost" onClick={onClose}>{t("Cancel")}</Button></SheetClose>
+          </div>
+          {error ? <span className="text-xs font-medium text-rose-600">{t(error)}</span> : null}
+          <CredentialBox title={t("Account created")} accounts={result ? [result] : []} />
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

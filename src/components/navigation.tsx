@@ -369,6 +369,7 @@ const ROLE_NAV: Record<RoleCode, RoleNavGroup[]> = {
       label: "Platform",
       items: [
         { label: "Users", href: "/users", icon: "Users" },
+        moduleItem("groups", "/groups", "Groups", "Network"),
         { label: "Copilot", href: "/copilot", icon: "BrainCircuit" },
         { label: "Audit Log", href: "/audit", icon: "FileText" },
         moduleItem("configuration", "/configuration", "Configuration", "Settings"),

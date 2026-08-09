@@ -345,6 +345,8 @@ export type CreateAccountInput = {
   studentIds?: string[];
   /** Target establishment (school group manager flow). Defaults to the caller's school. */
   schoolId?: string | null;
+  /** Target group (platform admin creating a GROUP_MANAGER). Defaults to the caller's group. */
+  groupId?: string | null;
 };
 
 export async function createAccount(session: SessionPayload, input: CreateAccountInput): Promise<CreatedAccount & { role: string }> {
@@ -355,12 +357,17 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
   // Group-level manager account (no school binding) — super admin / managers only.
   if (role === "GROUP_MANAGER") {
     if (!can(session, "establishment:manage")) throw new Error("FORBIDDEN");
+    const targetGroupId = input.groupId?.trim() || session.groupId;
+    if (!targetGroupId) throw new Error("FORBIDDEN");
+    if (input.groupId?.trim() && !hasRole(session, ROLES.SUPER_ADMIN)) throw new Error("FORBIDDEN");
+    const group = await prisma.schoolGroup.findUnique({ where: { id: targetGroupId }, select: { id: true } });
+    if (!group) throw new Error("NOT_FOUND");
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hashPassword(temporaryPassword);
     const user = await prisma.user.create({
       data: {
         schoolId: null,
-        groupId: session.groupId,
+        groupId: targetGroupId,
         email: input.email.trim().toLowerCase(),
         passwordHash,
         firstName: input.firstName.trim(),
@@ -376,7 +383,7 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
       if (isUniqueViolation(error)) throw new Error("EMAIL_TAKEN");
       throw error;
     });
-    await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role } });
+    await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role, groupId: targetGroupId } });
     return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
   }
 
@@ -474,6 +481,187 @@ export async function createAccount(session: SessionPayload, input: CreateAccoun
 
   await audit(session, { action: "ACCOUNT.CREATED", entityType: "User", entityId: user.id, metadata: { role } });
   return { userId: user.id, email: user.email, firstName: input.firstName.trim(), lastName: input.lastName.trim(), temporaryPassword, role };
+}
+
+// ---------------------------------------------------------------------------
+// Establishment managers (GROUP_MANAGER / SUPER_ADMIN delegation)
+// ---------------------------------------------------------------------------
+
+export type AssignManagerInput = {
+  schoolId: string;
+  role: "PRINCIPAL" | "ADMIN";
+  mode: "existing" | "new";
+  email: string;
+  firstName?: string;
+  lastName?: string;
+};
+
+export async function assignEstablishmentManager(
+  session: SessionPayload,
+  input: AssignManagerInput,
+): Promise<
+  | ({ ok: true; userId: string; email: string; firstName: string; lastName: string } & { temporaryPassword?: string })
+  | { ok: false; code: string }
+> {
+  if (!input.schoolId?.trim() || !input.email?.trim()) throw new Error("INVALID");
+  if (input.role !== "PRINCIPAL" && input.role !== "ADMIN") throw new Error("INVALID");
+  if (!(await canManageSchool(session, input.schoolId))) throw new Error("FORBIDDEN");
+
+  const schoolId = input.schoolId.trim();
+  const accessRole = input.role;
+
+  if (input.mode === "new") {
+    if (!input.firstName?.trim() || !input.lastName?.trim()) throw new Error("INVALID");
+    const created = await createAccount(session, {
+      firstName: input.firstName.trim(),
+      lastName: input.lastName.trim(),
+      email: input.email.trim(),
+      role: input.role,
+      schoolId,
+    });
+    await audit(session, {
+      action: "ESTABLISHMENT.MANAGER_CREATED",
+      entityType: "User",
+      entityId: created.userId,
+      metadata: { role: input.role, schoolId },
+    });
+    return {
+      ok: true,
+      userId: created.userId,
+      email: created.email,
+      firstName: created.firstName,
+      lastName: created.lastName,
+      temporaryPassword: created.temporaryPassword,
+    };
+  }
+
+  const existing = await prisma.user.findUnique({
+    where: { email: input.email.trim().toLowerCase() },
+    include: { roles: { select: { roleCode: true } } },
+  });
+  if (!existing) throw new Error("NOT_FOUND");
+
+  const existingRoleCodes = new Set(existing.roles.map((r) => r.roleCode));
+  if (existingRoleCodes.has(ROLES.GROUP_MANAGER) || existingRoleCodes.has(ROLES.SUPER_ADMIN)) {
+    throw new Error("FORBIDDEN");
+  }
+
+  if (!hasRole(session, ROLES.SUPER_ADMIN)) {
+    if (existing.schoolId && existing.schoolId !== schoolId) throw new Error("FORBIDDEN");
+    if (existing.groupId && session.groupId && existing.groupId !== session.groupId) throw new Error("FORBIDDEN");
+  }
+
+  const currentRole = await prisma.userRole.findUnique({
+    where: { userId_roleCode: { userId: existing.id, roleCode: input.role } },
+  });
+  if (!currentRole) {
+    await prisma.userRole.create({
+      data: { userId: existing.id, roleCode: input.role, schoolId },
+    });
+  }
+
+  await prisma.establishmentAccess.upsert({
+    where: { userId_schoolId: { userId: existing.id, schoolId } },
+    update: { role: accessRole },
+    create: { userId: existing.id, schoolId, role: accessRole },
+  });
+
+  if (!existing.schoolId) {
+    await prisma.user.update({ where: { id: existing.id }, data: { schoolId } });
+  }
+
+  await audit(session, {
+    action: "ESTABLISHMENT.MANAGER_ASSIGNED",
+    entityType: "User",
+    entityId: existing.id,
+    metadata: { role: input.role, schoolId, mode: "existing" },
+  });
+
+  return {
+    ok: true,
+    userId: existing.id,
+    email: existing.email,
+    firstName: existing.firstName,
+    lastName: existing.lastName,
+  };
+}
+
+export async function updateEstablishmentManager(
+  session: SessionPayload,
+  input: { userId: string; schoolId: string; role: "PRINCIPAL" | "ADMIN" },
+) {
+  if (!input.userId?.trim() || !input.schoolId?.trim()) throw new Error("INVALID");
+  if (input.role !== "PRINCIPAL" && input.role !== "ADMIN") throw new Error("INVALID");
+  if (!(await canManageSchool(session, input.schoolId))) throw new Error("FORBIDDEN");
+
+  const access = await prisma.establishmentAccess.findUnique({
+    where: { userId_schoolId: { userId: input.userId, schoolId: input.schoolId } },
+  });
+  if (!access) throw new Error("NOT_FOUND");
+
+  const oldRoleCode = access.role === "MANAGER" ? "SCHOOL_MANAGER" : access.role;
+  const newRoleCode = input.role;
+
+  await prisma.$transaction([
+    prisma.establishmentAccess.update({
+      where: { userId_schoolId: { userId: input.userId, schoolId: input.schoolId } },
+      data: { role: newRoleCode },
+    }),
+    prisma.userRole.deleteMany({
+      where: { userId: input.userId, roleCode: oldRoleCode, schoolId: input.schoolId },
+    }),
+  ]);
+
+  const hasNewRole = await prisma.userRole.findUnique({
+    where: { userId_roleCode: { userId: input.userId, roleCode: newRoleCode } },
+  });
+  if (!hasNewRole) {
+    await prisma.userRole.create({
+      data: { userId: input.userId, roleCode: newRoleCode, schoolId: input.schoolId },
+    });
+  }
+
+  await audit(session, {
+    action: "ESTABLISHMENT.MANAGER_UPDATED",
+    entityType: "User",
+    entityId: input.userId,
+    metadata: { schoolId: input.schoolId, oldRole: oldRoleCode, newRole: newRoleCode },
+  });
+
+  return { ok: true, userId: input.userId, role: newRoleCode };
+}
+
+export async function removeEstablishmentManager(
+  session: SessionPayload,
+  input: { userId: string; schoolId: string },
+) {
+  if (!input.userId?.trim() || !input.schoolId?.trim()) throw new Error("INVALID");
+  if (!(await canManageSchool(session, input.schoolId))) throw new Error("FORBIDDEN");
+
+  const access = await prisma.establishmentAccess.findUnique({
+    where: { userId_schoolId: { userId: input.userId, schoolId: input.schoolId } },
+  });
+  if (!access) throw new Error("NOT_FOUND");
+
+  const roleCode = access.role === "MANAGER" ? "SCHOOL_MANAGER" : access.role;
+
+  await prisma.$transaction([
+    prisma.establishmentAccess.delete({
+      where: { userId_schoolId: { userId: input.userId, schoolId: input.schoolId } },
+    }),
+    prisma.userRole.deleteMany({
+      where: { userId: input.userId, roleCode, schoolId: input.schoolId },
+    }),
+  ]);
+
+  await audit(session, {
+    action: "ESTABLISHMENT.MANAGER_REMOVED",
+    entityType: "User",
+    entityId: input.userId,
+    metadata: { schoolId: input.schoolId, role: roleCode },
+  });
+
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------

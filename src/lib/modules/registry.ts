@@ -26,6 +26,7 @@ import {
   LayoutGrid,
   Library,
   MessageSquare,
+  Network,
   School,
   ScrollText,
   Settings,
@@ -69,7 +70,8 @@ export type IconName =
   | "Bus"
   | "Wallet"
   | "KeyRound"
-  | "Bell";
+  | "Bell"
+  | "Network";
 
 export const iconMap: Record<IconName, LucideIcon> = {
   LayoutDashboard,
@@ -99,6 +101,7 @@ export const iconMap: Record<IconName, LucideIcon> = {
   Wallet,
   KeyRound,
   Bell,
+  Network,
 };
 
 // ---------------------------------------------------------------------------
@@ -107,6 +110,7 @@ export const iconMap: Record<IconName, LucideIcon> = {
 
 export type ModuleCode =
   | "establishments"
+  | "groups"
   | "students"
   | "teachers"
   | "classes"
@@ -155,6 +159,7 @@ export const MODULE_CATEGORIES: { key: ModuleCategory; label: string }[] = [
 export const MODULES: ModuleDef[] = [
   // People & Administration
   { code: "establishments", label: "Establishments", category: "people", icon: "School", href: "/school" },
+  { code: "groups", label: "School Groups", category: "platform", icon: "Network", href: "/groups" },
   { code: "students", label: "Students", category: "people", icon: "GraduationCap", href: "/students" },
   { code: "teachers", label: "Teachers", category: "people", icon: "Users", href: "/teachers" },
   { code: "classes", label: "Classes", category: "people", icon: "LayoutGrid", href: "/classes" },

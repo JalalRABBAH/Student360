@@ -34,13 +34,15 @@ function TopBar({
   const pathname = usePathname();
   const bare = pathname ? stripLocale(pathname) : "";
   const isDashboard = bare === "/dashboard" || bare === "/dashboard/" || bare === "" || bare === "/";
+  const isGroupManager = user.roles.includes("GROUP_MANAGER");
+  const hideBack = isGroupManager && (bare === "/establishments" || bare.startsWith("/establishments/"));
 
   return (
     <header
       className="fixed inset-x-0 top-0 z-30 flex h-[var(--topbar-height)] items-center justify-between border-b border-slate-200 bg-white/80 px-4 backdrop-blur-md dark:border-slate-800 dark:bg-slate-950/80 sm:px-6 lg:px-8"
     >
       <div className="flex min-w-0 items-center gap-3">
-        {!isDashboard && (
+        {!isDashboard && !hideBack && (
           <Link
             href={href("/dashboard")}
             className="flex shrink-0 items-center justify-center rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-300"
@@ -58,7 +60,7 @@ function TopBar({
           </span>
         </Link>
         <div className="hidden h-6 w-px bg-slate-200 dark:bg-slate-800 sm:block" />
-        {user.roles.includes("GROUP_MANAGER") ? (
+        {isGroupManager ? (
           <div className="hidden min-w-0 flex-1 items-center gap-2 text-sm sm:flex">
             <span className="truncate font-semibold text-slate-900 dark:text-white">
               {user.firstName} {user.lastName}
@@ -67,13 +69,6 @@ function TopBar({
             <span className="truncate text-slate-500 dark:text-slate-400">
               {t(ROLE_LABELS.GROUP_MANAGER)}
             </span>
-            <span className="text-slate-300 dark:text-slate-700">·</span>
-            <Link
-              href={href("/establishments")}
-              className="truncate text-xs font-semibold text-primary-600 hover:underline dark:text-primary-400"
-            >
-              {t("My establishments")}
-            </Link>
           </div>
         ) : (
           <div className="hidden items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400 sm:flex">

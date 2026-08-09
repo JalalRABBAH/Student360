@@ -17,14 +17,16 @@ export default async function Page({ params }: { params: PageParams }) {
     where: { id: schoolId },
     include: {
       _count: { select: { students: true, teachers: true, classes: true } },
-      establishmentAccess: {
-        include: { user: { select: { firstName: true, lastName: true, email: true } } },
-        take: 1,
-      },
     },
   });
 
   if (!school) notFound();
+
+  const managers = await prisma.establishmentAccess.findMany({
+    where: { schoolId, role: { in: ["ADMIN", "PRINCIPAL", "MANAGER"] } },
+    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+    orderBy: { createdAt: "asc" },
+  });
 
   return (
     <EstablishmentSupervisionPage
@@ -40,7 +42,13 @@ export default async function Page({ params }: { params: PageParams }) {
         studentCount: school._count.students,
         teacherCount: school._count.teachers,
         classCount: school._count.classes,
-        manager: school.establishmentAccess[0]?.user ?? null,
+        managers: managers.map((row) => ({
+          id: row.user.id,
+          firstName: row.user.firstName,
+          lastName: row.user.lastName,
+          email: row.user.email,
+          accessRole: row.role,
+        })),
       }}
     />
   );

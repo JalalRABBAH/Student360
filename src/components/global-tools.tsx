@@ -2,7 +2,7 @@
 
 import { LocalizedLink as Link } from "@/i18n/provider";
 import { useEffect, useRef, useState } from "react";
-import { Bell, Building2, Check, ChevronRight, FileText, KeyRound, LogOut, Search, Settings, UserRound, X } from "lucide-react";
+import { Bell, Check, ChevronRight, KeyRound, LogOut, Search, Settings, UserRound, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn, initials } from "@/lib/utils";
 import { useI18n } from "@/i18n/provider";
@@ -209,21 +209,13 @@ export function UserMenu({ user }: { user: SessionUser }) {
           <div className="border-t border-slate-100 py-2 dark:border-slate-800">
             {isGroupManager ? (
               <>
-                <Link href={href("/establishments")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
-                  <Building2 className="h-4 w-4" />
-                  {t("My establishments")}
-                </Link>
-                <Link href={href("/reports")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
-                  <FileText className="h-4 w-4" />
-                  {t("Reports")}
+                <Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
+                  <Settings className="h-4 w-4" />
+                  {t("Configuration")}
                 </Link>
                 <Link href={href("/permissions")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
                   <KeyRound className="h-4 w-4" />
                   {t("Modules & Permissions")}
-                </Link>
-                <Link href={href("/configuration")} onClick={() => setOpen(false)} className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-900">
-                  <Settings className="h-4 w-4" />
-                  {t("Configuration")}
                 </Link>
               </>
             ) : (

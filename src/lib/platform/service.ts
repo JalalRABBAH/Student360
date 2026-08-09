@@ -281,12 +281,15 @@ export async function createEstablishment(session: SessionPayload, input: Create
 
   await audit(session, { action: "ESTABLISHMENT.CREATED", entityType: "School", entityId: school.id, metadata: { name: school.name } });
 
-  // The creator manages the new establishment (school group manager flow).
-  await prisma.establishmentAccess.upsert({
-    where: { userId_schoolId: { userId: session.sub, schoolId: school.id } },
-    update: {},
-    create: { userId: session.sub, schoolId: school.id, role: hasRole(session, ROLES.GROUP_MANAGER) ? "MANAGER" : "ADMIN" },
-  });
+  // The creator manages the new establishment, unless they are a group manager
+  // (group managers manage via their group scope, not as an establishment manager).
+  if (!hasRole(session, ROLES.GROUP_MANAGER)) {
+    await prisma.establishmentAccess.upsert({
+      where: { userId_schoolId: { userId: session.sub, schoolId: school.id } },
+      update: {},
+      create: { userId: session.sub, schoolId: school.id, role: "ADMIN" },
+    });
+  }
 
   return { ok: true, id: school.id, name: school.name, slug: school.slug };
 }
@@ -294,6 +297,14 @@ export async function createEstablishment(session: SessionPayload, input: Create
 // ---------------------------------------------------------------------------
 // Managed establishments (for the top switcher + group manager page)
 // ---------------------------------------------------------------------------
+
+export type GroupSummary = {
+  schoolCount: number;
+  totalSeats: number;
+  totalStudents: number;
+  totalTeachers: number;
+  totalClasses: number;
+};
 
 export type ManagedEstablishment = {
   id: string;
@@ -307,6 +318,7 @@ export type ManagedEstablishment = {
   studentCount: number;
   teacherCount: number;
   classCount: number;
+  managers: { id: string; firstName: string; lastName: string; email: string; accessRole: string }[];
 };
 
 /** Establishments the caller may manage (own school + EstablishmentAccess; group schools for GROUP_MANAGER; all for SUPER_ADMIN). */
@@ -344,6 +356,37 @@ export async function managedSchoolsFor(session: SessionPayload): Promise<{ id: 
   return [...map.values()];
 }
 
+/** Aggregate metrics for the group manager dashboard. */
+export async function getGroupSummary(session: SessionPayload): Promise<GroupSummary> {
+  if (!can(session, "establishment:manage") && !can(session, "school:configure")) {
+    return { schoolCount: 0, totalSeats: 0, totalStudents: 0, totalTeachers: 0, totalClasses: 0 };
+  }
+
+  const schools = await managedSchoolsFor(session);
+  if (!schools.length) {
+    return { schoolCount: 0, totalSeats: 0, totalStudents: 0, totalTeachers: 0, totalClasses: 0 };
+  }
+
+  const ids = [...new Set(schools.map((s) => s.id))];
+  const [students, teachers, classes, seats] = await Promise.all([
+    prisma.student.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),
+    prisma.teacher.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids }, status: "ACTIVE" }, _count: { _all: true } }),
+    prisma.schoolClass.groupBy({ by: ["schoolId"], where: { schoolId: { in: ids } }, _count: { _all: true } }),
+    prisma.school.aggregate({ where: { id: { in: ids } }, _sum: { seatsLimit: true } }),
+  ]);
+
+  const count = (rows: { schoolId: string; _count: { _all: number } }[], id: string) =>
+    rows.find((r) => r.schoolId === id)?._count._all ?? 0;
+
+  return {
+    schoolCount: ids.length,
+    totalSeats: seats._sum.seatsLimit ?? 0,
+    totalStudents: ids.reduce((sum, id) => sum + count(students, id), 0),
+    totalTeachers: ids.reduce((sum, id) => sum + count(teachers, id), 0),
+    totalClasses: ids.reduce((sum, id) => sum + count(classes, id), 0),
+  };
+}
+
 /** Detail list for the "Establishments" group-management page. */
 export async function listManagedEstablishments(session: SessionPayload): Promise<ManagedEstablishment[]> {
   if (!can(session, "establishment:manage") && !can(session, "school:configure")) return [];
@@ -357,7 +400,7 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
   });
   const roleBySchool = new Map(withCounts.map((row) => [row.schoolId, row.role]));
   if (hasRole(session, ROLES.GROUP_MANAGER)) {
-    schools.forEach((s) => { if (!roleBySchool.has(s.id)) roleBySchool.set(s.id, "MANAGER"); });
+    schools.forEach((s) => { if (!roleBySchool.has(s.id)) roleBySchool.set(s.id, "GROUP_MANAGER"); });
   }
 
   const ids = [...new Set(schools.map((s) => s.id))];
@@ -374,6 +417,24 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
     orderBy: { name: "asc" },
   });
 
+  const managers = await prisma.establishmentAccess.findMany({
+    where: { schoolId: { in: ids }, role: { in: ["ADMIN", "PRINCIPAL", "MANAGER"] } },
+    include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  const managersBySchool = new Map<string, ManagedEstablishment["managers"]>();
+  for (const row of managers) {
+    const list = managersBySchool.get(row.schoolId) ?? [];
+    list.push({
+      id: row.user.id,
+      firstName: row.user.firstName,
+      lastName: row.user.lastName,
+      email: row.user.email,
+      accessRole: row.role,
+    });
+    managersBySchool.set(row.schoolId, list);
+  }
+
   return details.map((school) => ({
     id: school.id,
     name: school.name,
@@ -386,6 +447,7 @@ export async function listManagedEstablishments(session: SessionPayload): Promis
     studentCount: count(students, school.id),
     teacherCount: count(teachers, school.id),
     classCount: count(classes, school.id),
+    managers: managersBySchool.get(school.id) ?? [],
   }));
 }
 

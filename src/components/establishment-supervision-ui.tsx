@@ -6,7 +6,13 @@ import { Button } from "@/components/ui/button";
 import { PageHeader, StatusBadge } from "@/components/demo-ui";
 import { useI18n, LocalizedLink as Link } from "@/i18n/provider";
 
-type Manager = { firstName: string; lastName: string; email: string } | null;
+type Manager = { id: string; firstName: string; lastName: string; email: string; accessRole: string };
+
+function managerRoleLabel(role: string, t: (key: string) => string) {
+  if (role === "MANAGER" || role === "SCHOOL_MANAGER") return t("School manager");
+  if (role === "PRINCIPAL") return t("School management");
+  return t("School administration");
+}
 
 export function EstablishmentSupervisionPage({
   school,
@@ -23,7 +29,7 @@ export function EstablishmentSupervisionPage({
     studentCount: number;
     teacherCount: number;
     classCount: number;
-    manager: Manager;
+    managers: Manager[];
   };
 }) {
   const { t, href } = useI18n();
@@ -94,8 +100,23 @@ export function EstablishmentSupervisionPage({
             <dd><StatusBadge tone={school.status === "ACTIVE" ? "positive" : "neutral"}>{school.status}</StatusBadge></dd>
           </div>
           <div>
-            <dt className="text-slate-500">{t("Manager")}</dt>
-            <dd>{school.manager ? `${school.manager.firstName} ${school.manager.lastName}` : t("Not assigned")}</dd>
+            <dt className="text-slate-500">{t("Managers")}</dt>
+            <dd>
+              {school.managers.length ? (
+                <div className="space-y-1">
+                  {school.managers.map((manager) => (
+                    <div key={manager.id} className="flex items-center gap-2 text-sm">
+                      <span>{manager.firstName} {manager.lastName}</span>
+                      <StatusBadge tone={manager.accessRole === "ADMIN" ? "neutral" : "info"}>
+                        {managerRoleLabel(manager.accessRole, t)}
+                      </StatusBadge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                t("Not assigned")
+              )}
+            </dd>
           </div>
         </dl>
       </Card>
